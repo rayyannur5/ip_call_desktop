@@ -1,0 +1,49 @@
+name: ip_call_desktop
+description: "Nurse Call Desktop Application"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management & Routing
+  get: ^5.0.0-release-candidate-9.3.3
+  get_storage: ^2.1.1
+
+  # MQTT
+  mqtt_client: ^10.11.11
+
+  # SIP
+  sip_ua: ^1.1.0
+
+  # Database (direct MySQL)
+  mysql_client: ^0.0.27
+
+  # Audio
+  audioplayers: ^6.1.0
+
+  # HTTP (for downloading dynamic audio files)
+  http: ^1.2.0
+
+  # Utilities
+  intl: ^0.20.2
+  process_run: ^1.2.0
+  path_provider: ^2.1.0
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/sounds/
+    - assets/speaks/
+    - assets/icons/
