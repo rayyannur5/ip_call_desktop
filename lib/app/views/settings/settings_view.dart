@@ -209,6 +209,80 @@ class _SettingsViewState extends State<SettingsView> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.dialog(
+                            AlertDialog(
+                              title: const Text('Reset Pesan & MQTT?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Text('Batal'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    controller.resetData();
+                                    Navigator.of(context).pop(); // Tutup modal setting
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white),
+                                  child: const Text('Ya, Reset Data'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.delete_forever),
+                        label: const Text('Reset Data'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[700],
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.dialog(
+                            AlertDialog(
+                              title: const Text('Reboot Perangkat?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Text('Batal'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    controller.rebootDevice();
+                                    Navigator.of(context).pop(); // Tutup modal setting
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white),
+                                  child: const Text('Ya, Reboot'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.power_settings_new),
+                        label: const Text('Reboot'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[800],
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
               ],
 
@@ -308,6 +382,8 @@ class _SettingsViewState extends State<SettingsView> {
                           textAlign: TextAlign.center,
                         ),
                       ),
+                    const SizedBox(height: 16),
+
                     Row(
                       children: [
                         Expanded(

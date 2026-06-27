@@ -162,12 +162,41 @@ class MessageController extends GetxController {
       }
     }
 
-    messages.add({
+    final newMsg = {
       'topic': topic,
       'created_at': DateTime.now().toIso8601String(),
       'message': message,
       'username': resolvedName,
-    });
+    };
+
+    // Check toilet priority setting
+    bool toiletPriority = false;
+    try {
+      final db = Get.find<DatabaseService>();
+      final utils = await db.getUtils();
+      toiletPriority = (utils['toilet_priority'] ?? 0.0) == 1.0;
+    } catch (_) {}
+
+    if (toiletPriority) {
+      // If it's a toilet message, insert it after existing toilet messages but before other types of messages
+      if (topic.contains('toilet')) {
+        int insertIndex = 0;
+        for (int i = 0; i < messages.length; i++) {
+          if (messages[i]['topic'].toString().contains('toilet')) {
+            insertIndex = i + 1;
+          } else {
+            break;
+          }
+        }
+        messages.insert(insertIndex, newMsg);
+      } else {
+        // If not a toilet message, append it at the end of the list
+        messages.add(newMsg);
+      }
+    } else {
+      messages.add(newMsg);
+    }
+
     _saveState();
     _newMessage();
   }

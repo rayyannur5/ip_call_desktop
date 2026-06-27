@@ -29,6 +29,7 @@ class HomeController extends GetxController {
   int intervalSpeaks = 7000;
   int timeoutCall = 60000;
   int intervalUpdateStatus = 10000;
+  final toiletPriority = false.obs;
 
   @override
   void onInit() {
@@ -62,6 +63,7 @@ class HomeController extends GetxController {
           (utils['timeout_call'] ?? 60000).toInt();
       intervalUpdateStatus =
           (utils['interval_update_status'] ?? 10000).toInt();
+      toiletPriority.value = (utils['toilet_priority'] ?? 0.0) == 1.0;
 
       // Connect MQTT
       final mqtt = Get.find<MqttService>();
@@ -175,6 +177,7 @@ class HomeController extends GetxController {
       intervalSpeaks = (utils['interval_speaks'] ?? 7000).toInt();
       timeoutCall = (utils['timeout_call'] ?? 60000).toInt();
       intervalUpdateStatus = (utils['interval_update_status'] ?? 10000).toInt();
+      toiletPriority.value = (utils['toilet_priority'] ?? 0.0) == 1.0;
 
       // Reconnect MQTT
       final mqtt = Get.find<MqttService>();

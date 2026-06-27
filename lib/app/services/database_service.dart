@@ -268,6 +268,12 @@ class DatabaseService extends GetxService {
     });
   }
 
+  Future<void> executeRaw(String query) async {
+    await _executeSafe(() async {
+      await _conn!.execute(query);
+    });
+  }
+
   // ---- Utils ----
 
   Future<Map<String, double>> getUtils() async {
@@ -287,6 +293,15 @@ class DatabaseService extends GetxService {
         utils[typeVal?.toString() ?? ''] = finalVal;
       }
       return utils;
+    });
+  }
+
+  Future<void> updateUtil(String type, double value) async {
+    await _executeSafe(() async {
+      await _conn!.execute(
+        'UPDATE utils SET value = :val WHERE type = :type',
+        {'val': value.toString(), 'type': type},
+      );
     });
   }
 

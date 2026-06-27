@@ -571,7 +571,8 @@ INSERT INTO `utils` VALUES
 ('time_autorefresh',0,'[APP] Waktu jeda sebelum halaman web memuat ulang (refresh) secara otomatis.'),
 ('timeout_call',60000,'[APP] Batas waktu (timeout) untuk panggilan telepon sebelum dianggap tidak terjawab.'),
 ('timeout_running_text',8500,'[PYTHON] Waktu jeda sebelum menampilkan teks berikutnya pada running text.'),
-('timeout_time_activity',60000,'[DEVICE2W] Waktu setelah ada aktifitas tombol untuk memutar lagu playlist lagi');
+('timeout_time_activity',60000,'[DEVICE2W] Waktu setelah ada aktifitas tombol untuk memutar lagu playlist lagi'),
+('toilet_priority',0,'[APP] Mengaktifkan prioritas panggilan toilet agar selalu berada di posisi paling atas');
 /*!40000 ALTER TABLE `utils` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

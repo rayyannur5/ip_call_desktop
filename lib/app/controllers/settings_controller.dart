@@ -6,6 +6,9 @@ import '../services/database_service.dart';
 import '../services/mqtt_service.dart';
 import '../services/sip_service.dart';
 import '../services/audio_service.dart';
+import 'home_controller.dart';
+import 'message_controller.dart';
+import 'device_controller.dart';
 
 class SettingsController extends GetxController {
   late final TextEditingController adminPasswordCtrl;
@@ -171,6 +174,77 @@ class SettingsController extends GetxController {
       testResult.value = '';
     } else {
       testResult.value = 'Password admin salah!';
+    }
+  }
+
+  Future<void> rebootDevice() async {
+    try {
+      Get.snackbar('Rebooting', 'Sistem akan segera dijalankan ulang...',
+          snackPosition: SnackPosition.bottom,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white);
+      await Future.delayed(const Duration(seconds: 1));
+      await Process.run('sudo', ['reboot']);
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal memicu reboot: $e',
+          snackPosition: SnackPosition.bottom);
+    }
+  }
+
+  Future<void> resetData() async {
+    try {
+      final mqtt = Get.find<MqttService>();
+      
+      // Clear local memory message queue
+      try {
+        final msgCtrl = Get.find<MessageController>();
+        msgCtrl.messages.clear();
+        final storage = Get.find<StorageService>();
+        storage.appState = '';
+      } catch (_) {}
+
+      // Clear MQTT retained topics by publishing empty strings to the relevant device/global topics
+      if (mqtt.isConnected.value) {
+        try {
+          final deviceCtrl = Get.find<DeviceController>();
+          final listDevices = deviceCtrl.devices;
+          for (final room in listDevices) {
+            final deviceList = room['device'] as List<dynamic>;
+            for (final item in deviceList) {
+              final id = item['id'] as String;
+              if (item['mic'] != null) {
+                mqtt.publish('call/$id', '', retain: true);
+                mqtt.publish('tidakterjawab/$id', '', retain: true);
+                mqtt.publish('bed/$id', '', retain: true);
+                mqtt.publish('infus/$id', '', retain: true);
+                mqtt.publish('blue/$id', '', retain: true);
+                mqtt.publish('assist/$id', '', retain: true);
+              } else if (id.contains('room')) {
+                mqtt.publish(id, '', retain: true);
+              } else if (id.length > 1) {
+                mqtt.publish('toilet/$id', '', retain: true);
+              }
+            }
+          }
+        } catch (_) {}
+        mqtt.publish('panggil', '', retain: true);
+        mqtt.publish('aktif', '', retain: true);
+        mqtt.publish('internal', '', retain: true);
+      }
+
+      // Update UI log status
+      try {
+        final home = Get.find<HomeController>();
+        home.logKey.value++;
+      } catch (_) {}
+
+      Get.snackbar('Berhasil', 'Antrean pesan aktif dan retained MQTT berhasil di-reset!',
+          snackPosition: SnackPosition.bottom,
+          backgroundColor: Colors.green,
+          colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal mereset data: $e',
+          snackPosition: SnackPosition.bottom);
     }
   }
 
