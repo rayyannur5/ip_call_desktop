@@ -8,21 +8,25 @@ class DeviceView extends GetView<DeviceController> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         // Header
         Container(
           height: 40,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withOpacity(0.15),
             border: Border(
-              bottom: BorderSide(color: Colors.grey, width: 2),
+              bottom: BorderSide(color: theme.colorScheme.primary, width: 3),
             ),
           ),
-          child: const Text(
+          child: Text(
             'Daftar Perangkat',
-            style: TextStyle(fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.primary,
+            ),
           ),
         ),
 
@@ -86,14 +90,20 @@ class DeviceView extends GetView<DeviceController> {
                     children: devices.map((item) {
                       final msg = item['message'] ?? 'c';
                       Color bgColor;
+                      Color textColor;
+                      
                       if (msg == 'e') {
                         bgColor = Colors.red[400]!;
+                        textColor = Colors.white;
                       } else if (msg == 'i') {
                         bgColor = Colors.green[400]!;
+                        textColor = Colors.white;
                       } else if (msg == 'b') {
                         bgColor = Colors.blue[400]!;
+                        textColor = Colors.white;
                       } else {
-                        bgColor = Colors.white;
+                        bgColor = theme.colorScheme.surfaceContainerHighest.withOpacity(0.5);
+                        textColor = theme.colorScheme.onSurface;
                       }
 
                       return Container(
@@ -103,13 +113,9 @@ class DeviceView extends GetView<DeviceController> {
                         decoration: BoxDecoration(
                           color: bgColor,
                           borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment:
@@ -121,9 +127,7 @@ class DeviceView extends GetView<DeviceController> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
-                                  color: bgColor == Colors.white
-                                      ? Colors.black
-                                      : Colors.white,
+                                  color: textColor,
                                 ),
                               ),
                             ),

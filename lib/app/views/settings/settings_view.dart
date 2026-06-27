@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/settings_controller.dart';
+import '../../controllers/home_controller.dart';
 import '../../services/storage_service.dart';
 import '../platform/linux_wifi_view.dart';
 import '../platform/linux_volume_view.dart';
@@ -40,7 +41,7 @@ class _SettingsViewState extends State<SettingsView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                   const Text(
                     'Settings',
                     style: TextStyle(
                       fontSize: 22,
@@ -53,6 +54,80 @@ class _SettingsViewState extends State<SettingsView> {
                       icon: const Icon(Icons.close),
                     ),
                 ],
+              ),
+              const SizedBox(height: 16),
+
+              // UI / Tampilan Section
+              _buildSectionTitle('Tampilan'),
+              GetBuilder<HomeController>(
+                init: Get.find<HomeController>(),
+                builder: (homeCtrl) {
+                  return Obx(() {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Dark Mode Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.dark_mode, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Dark Mode',
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: homeCtrl.isDarkMode.value,
+                              onChanged: (_) => homeCtrl.toggleDarkMode(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        // Theme Colors Row
+                        const Row(
+                          children: [
+                            Icon(Icons.palette, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Warna Tema',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            // Preset Blue
+                            _buildColorPreset(homeCtrl, const Color(0xFF2563EB), 'Biru'),
+                            // Preset Green
+                            _buildColorPreset(homeCtrl, const Color(0xFF16A34A), 'Hijau'),
+                            // Preset Orange/Red
+                            _buildColorPreset(homeCtrl, const Color(0xFFEA580C), 'Oranye'),
+                            // Preset Purple
+                            _buildColorPreset(homeCtrl, const Color(0xFF9333EA), 'Ungu'),
+                            
+                            // Custom Color Button
+                            OutlinedButton.icon(
+                              onPressed: () => _showColorPickerDialog(context, homeCtrl),
+                              icon: const Icon(Icons.color_lens, size: 16),
+                              label: const Text('Custom'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  });
+                },
               ),
               const SizedBox(height: 16),
 
@@ -78,6 +153,58 @@ class _SettingsViewState extends State<SettingsView> {
                         },
                         icon: const Icon(Icons.volume_up),
                         label: const Text('Volume Control'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final now = DateTime.now();
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: now,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2037),
+                          );
+                          if (date != null) {
+                            final ok = await controller.setSystemDateOnly(date);
+                            Get.snackbar(
+                              ok ? 'Berhasil' : 'Gagal',
+                              ok ? 'Tanggal sistem berhasil diubah' : 'Gagal mengubah tanggal (butuh akses root)',
+                              snackPosition: SnackPosition.bottom,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today),
+                        label: const Text('Set Date'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final now = DateTime.now();
+                          if (context.mounted) {
+                            final time = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay.fromDateTime(now),
+                            );
+                            if (time != null) {
+                              final ok = await controller.setSystemTimeOnly(time);
+                              Get.snackbar(
+                                ok ? 'Berhasil' : 'Gagal',
+                                ok ? 'Jam sistem berhasil diubah' : 'Gagal mengubah jam (butuh akses root)',
+                                snackPosition: SnackPosition.bottom,
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.access_time),
+                        label: const Text('Set Time'),
                       ),
                     ),
                   ],
@@ -265,6 +392,377 @@ class _SettingsViewState extends State<SettingsView> {
           isDense: true,
         ),
       ),
+    );
+  }
+
+  Widget _buildColorPreset(HomeController homeCtrl, Color color, String name) {
+    final isSelected = homeCtrl.themeColor.value.value == color.value;
+    return InkWell(
+      onTap: () => homeCtrl.changeThemeColor(color),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isSelected ? 0.2 : 0.05),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.withOpacity(0.3),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              name,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? color : (Get.isDarkMode ? Colors.white70 : Colors.black87),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showColorPickerDialog(BuildContext context, HomeController homeCtrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return SliderColorPickerDialog(
+          initialColor: homeCtrl.themeColor.value,
+          onColorSelected: (Color selectedColor) {
+            homeCtrl.changeThemeColor(selectedColor);
+          },
+        );
+      },
+    );
+  }
+}
+
+class SliderColorPickerDialog extends StatefulWidget {
+  final Color initialColor;
+  final ValueChanged<Color> onColorSelected;
+
+  const SliderColorPickerDialog({
+    super.key,
+    required this.initialColor,
+    required this.onColorSelected,
+  });
+
+  @override
+  State<SliderColorPickerDialog> createState() => _SliderColorPickerDialogState();
+}
+
+class _SliderColorPickerDialogState extends State<SliderColorPickerDialog> {
+  late double _red;
+  late double _green;
+  late double _blue;
+  late TextEditingController _hexController;
+
+  @override
+  void initState() {
+    super.initState();
+    final color = widget.initialColor;
+    _red = color.red.toDouble();
+    _green = color.green.toDouble();
+    _blue = color.blue.toDouble();
+    _hexController = TextEditingController(text: _currentColorToHex());
+  }
+
+  @override
+  void dispose() {
+    _hexController.dispose();
+    super.dispose();
+  }
+
+  String _currentColorToHex() {
+    final r = _red.round().toRadixString(16).padLeft(2, '0').toUpperCase();
+    final g = _green.round().toRadixString(16).padLeft(2, '0').toUpperCase();
+    final b = _blue.round().toRadixString(16).padLeft(2, '0').toUpperCase();
+    return '#$r$g$b';
+  }
+
+  void _onHexChanged(String val) {
+    String cleanHex = val.replaceAll('#', '').trim();
+    if (cleanHex.length == 6) {
+      final colorInt = int.tryParse(cleanHex, radix: 16);
+      if (colorInt != null) {
+        final color = Color(colorInt | 0xFF000000);
+        setState(() {
+          _red = color.red.toDouble();
+          _green = color.green.toDouble();
+          _blue = color.blue.toDouble();
+        });
+      }
+    }
+  }
+
+  Color get _currentColor {
+    return Color.fromARGB(255, _red.round(), _green.round(), _blue.round());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentColor = _currentColor;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final luminance = currentColor.computeLuminance();
+    final textColor = luminance > 0.5 ? Colors.black87 : Colors.white;
+
+    return AlertDialog(
+      title: const Text('Pilih Warna Tema'),
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: 320,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Preview Color Box
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: currentColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: currentColor.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    '#${currentColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      shadows: const [
+                        Shadow(
+                          offset: Offset(0, 1),
+                          blurRadius: 2.0,
+                          color: Colors.black26,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Hex Code Input
+              Row(
+                children: [
+                  const Text('Hex Code: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: _hexController,
+                        onChanged: _onHexChanged,
+                        decoration: InputDecoration(
+                          hintText: '#RRGGBB',
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // RED (Merah)
+              Row(
+                children: [
+                  const Text('Merah (Red)', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Spacer(),
+                  Text('${_red.round()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22.0),
+                    child: Container(
+                      height: 12,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Colors.black,
+                            Colors.red,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: Colors.transparent,
+                      inactiveTrackColor: Colors.transparent,
+                      thumbColor: Colors.white,
+                      overlayColor: Colors.white.withOpacity(0.2),
+                      trackHeight: 12,
+                    ),
+                    child: Slider(
+                      value: _red,
+                      min: 0.0,
+                      max: 255.0,
+                      onChanged: (val) {
+                        setState(() {
+                          _red = val;
+                          _hexController.text = _currentColorToHex();
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              // GREEN (Hijau)
+              Row(
+                children: [
+                  const Text('Hijau (Green)', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Spacer(),
+                  Text('${_green.round()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22.0),
+                    child: Container(
+                      height: 12,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Colors.black,
+                            Colors.green,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: Colors.transparent,
+                      inactiveTrackColor: Colors.transparent,
+                      thumbColor: Colors.white,
+                      overlayColor: Colors.white.withOpacity(0.2),
+                      trackHeight: 12,
+                    ),
+                    child: Slider(
+                      value: _green,
+                      min: 0.0,
+                      max: 255.0,
+                      onChanged: (val) {
+                        setState(() {
+                          _green = val;
+                          _hexController.text = _currentColorToHex();
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              // BLUE (Biru)
+              Row(
+                children: [
+                  const Text('Biru (Blue)', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Spacer(),
+                  Text('${_blue.round()}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22.0),
+                    child: Container(
+                      height: 12,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Colors.black,
+                            Colors.blue,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: Colors.transparent,
+                      inactiveTrackColor: Colors.transparent,
+                      thumbColor: Colors.white,
+                      overlayColor: Colors.white.withOpacity(0.2),
+                      trackHeight: 12,
+                    ),
+                    child: Slider(
+                      value: _blue,
+                      min: 0.0,
+                      max: 255.0,
+                      onChanged: (val) {
+                        setState(() {
+                          _blue = val;
+                          _hexController.text = _currentColorToHex();
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Batal'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            widget.onColorSelected(currentColor);
+            Navigator.of(context).pop();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Simpan'),
+        ),
+      ],
     );
   }
 }

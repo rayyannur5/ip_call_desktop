@@ -5,15 +5,20 @@ import '../services/database_service.dart';
 import '../services/mqtt_service.dart';
 import '../services/sip_service.dart';
 import '../services/audio_service.dart';
+import '../services/storage_service.dart';
 import 'call_controller.dart';
 import 'message_controller.dart';
 
 class HomeController extends GetxController {
   final onDevices = false.obs;
   final onContacts = true.obs;
+  final onLogs = true.obs;
   final serverState = false.obs;
   final logKey = 0.obs;
   final isRefreshing = false.obs;
+
+  final isDarkMode = false.obs;
+  final themeColor = const Color(0xFF2563EB).obs;
 
   Timer? _serverTimeout;
 
@@ -25,6 +30,18 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final storage = Get.find<StorageService>();
+    isDarkMode.value = storage.isDarkMode;
+    themeColor.value = Color(storage.themeColorValue);
+    onContacts.value = storage.isContactsOpen;
+    onDevices.value = storage.isDevicesOpen;
+    onLogs.value = storage.isLogsOpen;
+
+    // Listen to changes to save state
+    ever(onContacts, (bool isOpen) => storage.isContactsOpen = isOpen);
+    ever(onDevices, (bool isOpen) => storage.isDevicesOpen = isOpen);
+    ever(onLogs, (bool isOpen) => storage.isLogsOpen = isOpen);
+
     _initServices();
   }
 
@@ -78,6 +95,37 @@ class HomeController extends GetxController {
 
   void toggleContacts() {
     onContacts.value = !onContacts.value;
+  }
+
+  void toggleLogs() {
+    onLogs.value = !onLogs.value;
+  }
+
+  void toggleDarkMode() {
+    isDarkMode.value = !isDarkMode.value;
+    final storage = Get.find<StorageService>();
+    storage.isDarkMode = isDarkMode.value;
+    _updateTheme();
+  }
+
+  void changeThemeColor(Color color) {
+    themeColor.value = color;
+    final storage = Get.find<StorageService>();
+    storage.themeColorValue = color.value;
+    _updateTheme();
+  }
+
+  void _updateTheme() {
+    Get.changeTheme(
+      ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: themeColor.value,
+          brightness: isDarkMode.value ? Brightness.dark : Brightness.light,
+          surface: isDarkMode.value ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        ),
+        useMaterial3: true,
+      ),
+    );
   }
 
   Future<void> refreshAllConnections() async {

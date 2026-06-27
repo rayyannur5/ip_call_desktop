@@ -51,5 +51,26 @@ class StorageService extends GetxService {
   String? get appState => _box.read('app_state');
   set appState(String? v) => _box.write('app_state', v);
 
+  // --- Theme & Appearance ---
+  bool get isDarkMode => _box.read('is_dark_mode') ?? false;
+  set isDarkMode(bool v) => _box.write('is_dark_mode', v);
+
+  int get themeColorValue => _box.read('theme_color_value') ?? 0xFF2563EB;
+  set themeColorValue(int v) => _box.write('theme_color_value', v);
+
+  // --- Window Panel States ---
+  bool get isContactsOpen => _box.read('is_contacts_open') ?? true;
+  set isContactsOpen(bool v) => _box.write('is_contacts_open', v);
+
+  bool get isDevicesOpen => _box.read('is_devices_open') ?? false;
+  set isDevicesOpen(bool v) => _box.write('is_devices_open', v);
+
+  bool get isLogsOpen => _box.read('is_logs_open') ?? true;
+  set isLogsOpen(bool v) => _box.write('is_logs_open', v);
+
+  // --- Sound Card ---
+  int get soundCardIndex => _box.read('sound_card_index') ?? -1;
+  set soundCardIndex(int v) => _box.write('sound_card_index', v);
+
   bool get isConfigured => serverHost.isNotEmpty;
 }

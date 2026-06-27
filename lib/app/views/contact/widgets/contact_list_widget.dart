@@ -9,6 +9,7 @@ class ContactListWidget extends GetView<ContactController> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         // Search input
@@ -20,8 +21,7 @@ class ContactListWidget extends GetView<ContactController> {
               hintText: 'Cari Nama Kamar',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide:
-                    const BorderSide(color: Color(0xFF1D4ED8)),
+                borderSide: BorderSide(color: theme.colorScheme.primary),
               ),
               contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 8),
@@ -57,7 +57,7 @@ class ContactListWidget extends GetView<ContactController> {
                   ),
                   children: devices
                       .where((item) => item['tw']?.toString() == '1')
-                      .map((item) => _buildContactItem(item))
+                      .map((item) => _buildContactItem(context, item))
                       .toList(),
                 );
               },
@@ -68,15 +68,17 @@ class ContactListWidget extends GetView<ContactController> {
     );
   }
 
-  Widget _buildContactItem(Map<String, dynamic> item) {
+  Widget _buildContactItem(BuildContext context, Map<String, dynamic> item) {
     final isActive = item['active'] == true;
+    final theme = Theme.of(context);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -105,14 +107,14 @@ class ContactListWidget extends GetView<ContactController> {
                   item['username'] ?? '',
                 );
               },
-              icon: const Icon(Icons.call,
-                  color: Color(0xFF34B1EB), size: 24),
+              icon: Icon(Icons.call,
+                  color: theme.colorScheme.primary, size: 24),
               style: IconButton.styleFrom(
-                backgroundColor: Colors.grey[200],
+                backgroundColor: theme.colorScheme.primaryContainer,
               ),
             )
           else
-            const Icon(Icons.circle, color: Colors.red, size: 12),
+            Icon(Icons.circle, color: theme.colorScheme.error, size: 12),
         ],
       ),
     );

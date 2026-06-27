@@ -39,6 +39,49 @@ class LinuxVolumeView extends GetView<LinuxVolumeController> {
             ),
             const SizedBox(height: 24),
 
+            // Sound Card Selection
+            const Text('Sound Card',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Obx(() {
+              final cards = controller.soundCards;
+              final selectedValue = controller.selectedCardIndex.value;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: selectedValue,
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem<int>(
+                        value: -1,
+                        child: Text('Default Sound Card'),
+                      ),
+                      ...cards.map((card) {
+                        return DropdownMenuItem<int>(
+                          value: card['index'] as int,
+                          child: Text(
+                            '[Card ${card['index']}] ${card['desc']}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        controller.changeSoundCard(val);
+                      }
+                    },
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+
             // Master Volume
             const Text('Master Volume',
                 style: TextStyle(fontWeight: FontWeight.bold)),

@@ -1,8 +1,52 @@
 import 'dart:io';
 import 'package:get/get.dart';
+import '../storage_service.dart';
 
 /// Volume control via amixer — Linux only
 class LinuxVolumeService extends GetxService {
+  List<String> _buildAmixerArgs(List<String> baseArgs) {
+    try {
+      final storage = Get.find<StorageService>();
+      final cardIndex = storage.soundCardIndex;
+      if (cardIndex != -1) {
+        return ['-c', '$cardIndex', ...baseArgs];
+      }
+    } catch (e) {
+      print('StorageService not initialized yet: $e');
+    }
+    return baseArgs;
+  }
+
+  /// List all available soundcards on the system
+  Future<List<Map<String, dynamic>>> getSoundCards() async {
+    if (!Platform.isLinux) return [];
+    try {
+      final file = File('/proc/asound/cards');
+      if (await file.exists()) {
+        final lines = await file.readAsLines();
+        final List<Map<String, dynamic>> cards = [];
+        final regex = RegExp(r'^\s*(\d+)\s+\[([^\]]+)\]:\s+(.*)$');
+        for (var line in lines) {
+          final match = regex.firstMatch(line);
+          if (match != null) {
+            final index = int.parse(match.group(1)!);
+            final id = match.group(2)!;
+            final desc = match.group(3)!.trim();
+            cards.add({
+              'index': index,
+              'id': id,
+              'desc': desc,
+            });
+          }
+        }
+        return cards;
+      }
+    } catch (e) {
+      print('Error listing soundcards: $e');
+    }
+    return [];
+  }
+
   /// Parse amixer output to get volume and mute state
   Map<String, dynamic> _parseAmixerOutput(String output) {
     int volume = 0;
@@ -26,7 +70,7 @@ class LinuxVolumeService extends GetxService {
     if (!Platform.isLinux) return {'volume': 100, 'muted': false};
 
     try {
-      final result = await Process.run('amixer', ['get', 'Master']);
+      final result = await Process.run('amixer', _buildAmixerArgs(['get', 'Master']));
       return _parseAmixerOutput(result.stdout.toString());
     } catch (e) {
       print('Get master volume error: $e');
@@ -38,7 +82,7 @@ class LinuxVolumeService extends GetxService {
   Future<void> setMasterVolume(int percent) async {
     if (!Platform.isLinux) return;
     try {
-      await Process.run('amixer', ['set', 'Master', '$percent%']);
+      await Process.run('amixer', _buildAmixerArgs(['set', 'Master', '$percent%']));
     } catch (e) {
       print('Set master volume error: $e');
     }
@@ -49,7 +93,7 @@ class LinuxVolumeService extends GetxService {
     if (!Platform.isLinux) return {'volume': 100, 'muted': false};
 
     try {
-      final result = await Process.run('amixer', ['get', 'Capture']);
+      final result = await Process.run('amixer', _buildAmixerArgs(['get', 'Capture']));
       return _parseAmixerOutput(result.stdout.toString());
     } catch (e) {
       print('Get capture volume error: $e');
@@ -61,7 +105,7 @@ class LinuxVolumeService extends GetxService {
   Future<void> setCaptureVolume(int percent) async {
     if (!Platform.isLinux) return;
     try {
-      await Process.run('amixer', ['set', 'Capture', '$percent%']);
+      await Process.run('amixer', _buildAmixerArgs(['set', 'Capture', '$percent%']));
     } catch (e) {
       print('Set capture volume error: $e');
     }
@@ -71,7 +115,7 @@ class LinuxVolumeService extends GetxService {
   Future<void> toggleMasterMute() async {
     if (!Platform.isLinux) return;
     try {
-      await Process.run('amixer', ['set', 'Master', 'toggle']);
+      await Process.run('amixer', _buildAmixerArgs(['set', 'Master', 'toggle']));
     } catch (e) {
       print('Toggle master mute error: $e');
     }
@@ -81,7 +125,7 @@ class LinuxVolumeService extends GetxService {
   Future<void> toggleCaptureMute() async {
     if (!Platform.isLinux) return;
     try {
-      await Process.run('amixer', ['set', 'Capture', 'toggle']);
+      await Process.run('amixer', _buildAmixerArgs(['set', 'Capture', 'toggle']));
     } catch (e) {
       print('Toggle capture mute error: $e');
     }

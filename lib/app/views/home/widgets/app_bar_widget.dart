@@ -14,9 +14,9 @@ class NurseCallAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final homeCtrl = Get.find<HomeController>();
-    return Container(
-      height: 64,
-      color: const Color(0xFF3B82F6), // bg-blue-500
+    return Obx(() => Container(
+      height: 80,
+      color: homeCtrl.themeColor.value.withOpacity(0.7),
       child: Row(
         children: [
           // Logo
@@ -24,7 +24,7 @@ class NurseCallAppBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Image.asset(
               'assets/icons/logo_web_2.png',
-              height: 48,
+              height: 60,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const Text(
                 'Nurse Call',
@@ -50,6 +50,14 @@ class NurseCallAppBar extends StatelessWidget {
               final statusColor = isConnected
                   ? const Color(0xFF22C55E)
                   : const Color(0xFFEF4444);
+              
+              // Dynamic contrast background based on app bar theme color
+              final barColor = homeCtrl.themeColor.value;
+              final isDarkBg = barColor.computeLuminance() < 0.5;
+              final circleBg = isDarkBg 
+                  ? Colors.white.withOpacity(0.7)
+                  : Colors.black.withOpacity(0.08);
+
               return Tooltip(
                 message: '$label: ${isConnected ? "Terhubung" : "Terputus"}',
                 child: AnimatedContainer(
@@ -57,21 +65,20 @@ class NurseCallAppBar extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 6),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
+                    color: circleBg,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: statusColor,
                       width: 1.5,
                     ),
-                    boxShadow: isConnected
-                      ? [
-                          BoxShadow(
-                            color: statusColor.withOpacity(0.2),
-                            blurRadius: 4,
-                            spreadRadius: 1,
-                          )
-                        ]
-                      : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        spreadRadius: 0.5,
+                        offset: const Offset(0, 1),
+                      )
+                    ],
                   ),
                   child: Icon(
                     icon,
@@ -85,12 +92,14 @@ class NurseCallAppBar extends StatelessWidget {
             return Row(
               children: [
                 buildIndicator(
-                    Icons.phone_in_talk, 'VoIP/SIP', sip.isRegistered.value),
-                buildIndicator(Icons.sensors, 'MQTT Broker', mqtt.isConnected.value),
-                buildIndicator(Icons.storage, 'MySQL Database', db.isConnected.value),
+                    Icons.phone_in_talk, 'Telepon', sip.isRegistered.value),
+                buildIndicator(Icons.sensors, 'Koneksi', mqtt.isConnected.value),
+                buildIndicator(Icons.storage, 'Data', db.isConnected.value),
               ],
             );
           }),
+
+          const SizedBox(width: 20),
 
           // Device count badge
           Obx(() {
@@ -174,10 +183,12 @@ class NurseCallAppBar extends StatelessWidget {
             icon: const Icon(Icons.settings, color: Colors.white, size: 24),
           ),
 
+          const SizedBox(width: 12),
+
           // Clock
           const ClockWidget(),
         ],
       ),
-    );
+    ));
   }
 }

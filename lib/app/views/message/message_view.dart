@@ -102,24 +102,33 @@ class _MessageViewState extends State<MessageView> {
             ),
             child: Row(
               children: [
-                // Label
+                // Label and Username in a Column to prevent horizontal overflow
                 Expanded(
-                  child: Text(
-                    _getMessageLabel(message),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                // Username
-                Text(
-                  username,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _getMessageLabel(message),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (username.isNotEmpty)
+                        Text(
+                          username,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
                   ),
                 ),
 
@@ -127,14 +136,14 @@ class _MessageViewState extends State<MessageView> {
                 if (message != '0') ...[
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(' || ',
-                        style: TextStyle(color: Colors.white, fontSize: 20)),
+                    child: Text('||',
+                        style: TextStyle(color: Colors.white, fontSize: 18)),
                   ),
                   Text(
                     _formatTime(seconds),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 18,
                     ),
                   ),
                 ],

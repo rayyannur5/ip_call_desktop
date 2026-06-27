@@ -21,26 +21,39 @@ class ContactView extends GetView<ContactController> {
                     child: Container(
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: controller.isKontak.value
+                            ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.15)
+                            : Colors.transparent,
                         border: Border(
                           bottom: BorderSide(
                             color: controller.isKontak.value
-                                ? const Color(0xFF1D4ED8)
+                                ? Theme.of(context).colorScheme.primary
                                 : Colors.transparent,
-                            width: 4,
+                            width: 3,
                           ),
                         ),
                       ),
-                      child: Center(
-                        child: Text(
-                          'Kontak',
-                          style: TextStyle(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.people,
+                            size: 18,
                             color: controller.isKontak.value
-                                ? const Color(0xFF1D4ED8)
-                                : Colors.black,
-                            fontWeight: FontWeight.w500,
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface,
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Kontak',
+                            style: TextStyle(
+                              color: controller.isKontak.value
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -51,26 +64,39 @@ class ContactView extends GetView<ContactController> {
                     child: Container(
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: !controller.isKontak.value
+                            ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.15)
+                            : Colors.transparent,
                         border: Border(
                           bottom: BorderSide(
                             color: !controller.isKontak.value
-                                ? const Color(0xFF1D4ED8)
+                                ? Theme.of(context).colorScheme.primary
                                 : Colors.transparent,
-                            width: 4,
+                            width: 3,
                           ),
                         ),
                       ),
-                      child: Center(
-                        child: Text(
-                          'Riwayat Telepon',
-                          style: TextStyle(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.history,
+                            size: 18,
                             color: !controller.isKontak.value
-                                ? const Color(0xFF1D4ED8)
-                                : Colors.black,
-                            fontWeight: FontWeight.w500,
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface,
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Riwayat Telepon',
+                            style: TextStyle(
+                              color: !controller.isKontak.value
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

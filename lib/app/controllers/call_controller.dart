@@ -69,36 +69,40 @@ class CallController extends GetxController {
   }
 
   void _updateCallSeconds() {
-    if (calls.isEmpty) {
-      callSeconds.clear();
-      return;
-    }
-    List<int> newSeconds = [];
-    for (int i = 0; i < calls.length; i++) {
-      final call = calls[i];
-      int second = 0;
-
-      if (call['created_at'] != null) {
-        second = DateTime.now()
-            .difference(DateTime.parse(call['created_at']))
-            .inSeconds
-            .abs();
-      } else if (call['started_at'] != null) {
-        second = DateTime.now()
-            .difference(DateTime.parse(call['started_at']))
-            .inSeconds
-            .abs();
-      }
-
-      // Auto hangup at 600 seconds (from Telpon.jsx line 20-22)
-      if (second > 600 && i == 0) {
-        hangUp();
+    try {
+      if (calls.isEmpty) {
+        callSeconds.clear();
         return;
       }
+      List<int> newSeconds = [];
+      for (int i = 0; i < calls.length; i++) {
+        final call = calls[i];
+        int second = 0;
 
-      newSeconds.add(second);
+        if (call['created_at'] != null) {
+          second = DateTime.now()
+              .difference(DateTime.parse(call['created_at']))
+              .inSeconds
+              .abs();
+        } else if (call['started_at'] != null) {
+          second = DateTime.now()
+              .difference(DateTime.parse(call['started_at']))
+              .inSeconds
+              .abs();
+        }
+
+        // Auto hangup at 600 seconds (from Telpon.jsx line 20-22)
+        if (second > 600 && i == 0) {
+          hangUp();
+          return;
+        }
+
+        newSeconds.add(second);
+      }
+      callSeconds.assignAll(newSeconds);
+    } catch (e) {
+      print('Error updating call seconds: $e');
     }
-    callSeconds.value = newSeconds;
   }
 
   void _handleMqttMessage(String topic, String message) {
@@ -174,12 +178,13 @@ class CallController extends GetxController {
 
     final mqtt = Get.find<MqttService>();
     final sip = Get.find<SipService>();
+    final audio = Get.find<AudioService>();
 
     // SIP call (replaces mqtt.publish("panggil", number))
     sip.makeCall(number);
     mqtt.publish('call/$id', 'a', qos: MqttQos.atLeastOnce, retain: true);
 
-    calls.value = [
+    calls.assignAll([
       {
         'topic': 'call/$id',
         'name': name,
@@ -188,7 +193,7 @@ class CallController extends GetxController {
         'type': 'outgoing',
         'phone': number,
       }
-    ];
+    ]);
     _saveState();
 
     // SIP error timeout (15s) — from App.jsx line 265-280
@@ -198,8 +203,10 @@ class CallController extends GetxController {
       mqtt.publish(calls[0]['topic'], 'x',
           qos: MqttQos.atLeastOnce, retain: true);
       sip.hangUp();
+      audio.stopRinging();
 
       calls.removeAt(0);
+      onSession.value = false;
       _saveState();
 
       // Show error dialog
@@ -218,6 +225,8 @@ class CallController extends GetxController {
   void _newCall() {
     final audio = Get.find<AudioService>();
 
+    _updateCallSeconds();
+
     if (calls.isNotEmpty) {
       print('RINGING');
       audio.playRinging();
@@ -231,6 +240,7 @@ class CallController extends GetxController {
       _timeout = Timer(Duration(milliseconds: home.timeoutCall), () {
         print('masuk timeout');
         if (!onSession.value && calls.isNotEmpty) {
+          audio.stopRinging();
           final id = calls[0]['topic'].substring(5);
           final messageCtrl = Get.find<MessageController>();
           messageCtrl.addMessage(
@@ -330,14 +340,17 @@ class CallController extends GetxController {
     sip.makeCall(call['phone']);
     mqtt.publish(call['topic'], 'a', qos: MqttQos.atLeastOnce, retain: true);
 
+    final audio = Get.find<AudioService>();
     _timeoutSipError?.cancel();
     _timeoutSipError = Timer(const Duration(seconds: 15), () {
       if (calls.isEmpty) return;
       mqtt.publish(calls[0]['topic'], 'x',
           qos: MqttQos.atLeastOnce, retain: true);
       sip.hangUp();
+      audio.stopRinging();
 
       calls.removeAt(0);
+      onSession.value = false;
       _saveState();
 
       Get.defaultDialog(
@@ -369,7 +382,7 @@ class CallController extends GetxController {
 
   void _onSipCallEnded() {
     // SIP call ended externally
-    if (onSession.value && calls.isNotEmpty) {
+    if (calls.isNotEmpty) {
       hangUp();
     }
   }

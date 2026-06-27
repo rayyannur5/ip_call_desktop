@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../services/storage_service.dart';
@@ -9,6 +10,55 @@ import '../services/audio_service.dart';
 class SettingsController extends GetxController {
   late final TextEditingController adminPasswordCtrl;
   final isAdminUnlocked = false.obs;
+
+  Future<bool> setSystemDate(DateTime dateTime) async {
+    if (!Platform.isLinux) return false;
+    try {
+      final dateStr = '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
+      
+      // Try running without sudo first (in case application is running as root)
+      var result = await Process.run('date', ['-s', dateStr]);
+      if (result.exitCode != 0) {
+        // If it fails, try with sudo
+        result = await Process.run('sudo', ['date', '-s', dateStr]);
+      }
+      
+      return result.exitCode == 0;
+    } catch (e) {
+      print('Set system date error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> setSystemDateOnly(DateTime date) async {
+    if (!Platform.isLinux) return false;
+    try {
+      final dateStr = '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
+      var result = await Process.run('date', ['+%Y%m%d', '-s', dateStr]);
+      if (result.exitCode != 0) {
+        result = await Process.run('sudo', ['date', '+%Y%m%d', '-s', dateStr]);
+      }
+      return result.exitCode == 0;
+    } catch (e) {
+      print('Set system date only error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> setSystemTimeOnly(TimeOfDay time) async {
+    if (!Platform.isLinux) return false;
+    try {
+      final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:00';
+      var result = await Process.run('date', ['+%T', '-s', timeStr]);
+      if (result.exitCode != 0) {
+        result = await Process.run('sudo', ['date', '+%T', '-s', timeStr]);
+      }
+      return result.exitCode == 0;
+    } catch (e) {
+      print('Set system time only error: $e');
+      return false;
+    }
+  }
 
   late final TextEditingController serverHostCtrl;
   late final TextEditingController mqttPortCtrl;

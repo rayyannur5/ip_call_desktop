@@ -58,7 +58,11 @@ class SipService extends GetxService implements SipUaHelperListener {
 
   void hangUp() {
     if (_activeCall != null) {
-      _activeCall!.hangup();
+      try {
+        _activeCall!.hangup();
+      } catch (e) {
+        print('SIP Hangup Error: $e');
+      }
       _activeCall = null;
     }
   }

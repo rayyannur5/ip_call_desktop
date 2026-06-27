@@ -18,6 +18,9 @@ class CallPanelView extends GetView<CallController> {
     return Obx(() {
       if (controller.calls.isEmpty) return const SizedBox.shrink();
 
+      // Access callSeconds to register it as a dependency for Obx
+      final _ = controller.callSeconds.length;
+
       return ListView.builder(
         itemCount: controller.calls.length,
         itemBuilder: (context, index) {

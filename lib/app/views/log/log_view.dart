@@ -91,7 +91,7 @@ class LogView extends StatelessWidget {
 
             // Header row (Fixed at top)
             Container(
-              color: const Color(0xFF60A5FA),
+              color: Get.find<HomeController>().themeColor.value.withOpacity(0.7),
               padding: const EdgeInsets.symmetric(
                   horizontal: 12, vertical: 8),
               child: const Row(
@@ -160,11 +160,11 @@ class LogView extends StatelessWidget {
                             : '0 detik';
 
                         return Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                             border: Border(
                               bottom: BorderSide(
-                                  color: Color(0xFFE5E7EB)),
+                                  color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5)),
                             ),
                           ),
                           padding: const EdgeInsets.symmetric(
