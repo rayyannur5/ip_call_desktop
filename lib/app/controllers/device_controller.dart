@@ -23,6 +23,7 @@ class DeviceController extends GetxController {
   Future<void> _loadDevices() async {
     try {
       final home = Get.find<HomeController>();
+      await home.initCompleter.future;
       _intervalUpdateStatus = home.intervalUpdateStatus;
 
       final db = Get.find<DatabaseService>();

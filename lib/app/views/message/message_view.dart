@@ -134,11 +134,11 @@ class _MessageViewState extends State<MessageView> {
 
                 // Stopwatch (not for '0' type)
                 if (message != '0') ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('||',
-                        style: TextStyle(color: Colors.white, fontSize: 18)),
-                  ),
+                  // const Padding(
+                  //   padding: EdgeInsets.symmetric(horizontal: 8),
+                  //   child: Text('||',
+                  //       style: TextStyle(color: Colors.white, fontSize: 18)),
+                  // ),
                   Text(
                     _formatTime(seconds),
                     style: const TextStyle(
@@ -171,7 +171,7 @@ class _MessageViewState extends State<MessageView> {
                 // Delete button
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: ElevatedButton(
+                  child: IconButton(
                     onPressed: () {
                       final mqtt = Get.find<MqttService>();
                       mqtt.publish(topic, 'x',
@@ -182,13 +182,14 @@ class _MessageViewState extends State<MessageView> {
                             qos: MqttQos.atLeastOnce, retain: true);
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF60A5FA),
-                      minimumSize: const Size(32, 32),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.25),
+                      hoverColor: Colors.white.withOpacity(0.35),
+                      highlightColor: Colors.white.withOpacity(0.4),
+                      minimumSize: const Size(40, 40),
                       padding: EdgeInsets.zero,
                     ),
-                    child: const Text('X',
-                        style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ],

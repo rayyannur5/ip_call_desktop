@@ -60,7 +60,10 @@ class ContactView extends GetView<ContactController> {
                 ),
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => controller.isKontak.value = false,
+                    onTap: () {
+                      controller.isKontak.value = false;
+                      controller.loadHistory(controller.currentDate.value);
+                    },
                     child: Container(
                       height: 40,
                       decoration: BoxDecoration(

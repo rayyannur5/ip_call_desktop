@@ -40,6 +40,7 @@ class ContactController extends GetxController {
   Future<void> _loadContacts() async {
     try {
       final home = Get.find<HomeController>();
+      await home.initCompleter.future;
       _intervalUpdateStatus = home.intervalUpdateStatus;
 
       final db = Get.find<DatabaseService>();

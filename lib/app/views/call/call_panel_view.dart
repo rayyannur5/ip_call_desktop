@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/call_controller.dart';
+import '../../controllers/home_controller.dart';
 
 /// Port of Telpon.jsx — 3 states: ringing, on session, queue
 class CallPanelView extends GetView<CallController> {
@@ -19,7 +20,7 @@ class CallPanelView extends GetView<CallController> {
       if (controller.calls.isEmpty) return const SizedBox.shrink();
 
       // Access callSeconds to register it as a dependency for Obx
-      final _ = controller.callSeconds.length;
+      final _ = controller.callSeconds.toList();
 
       return ListView.builder(
         itemCount: controller.calls.length,
@@ -132,15 +133,46 @@ class CallPanelView extends GetView<CallController> {
               ),
             )
           else if (!isSession && call['type'] == 'incoming')
-            // Answer button
-            ElevatedButton.icon(
-              onPressed: () => controller.handlerAnswer(call),
-              icon: const Icon(Icons.call, color: Color(0xFF22C55E)),
-              label: const Text('Jawab'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[200],
-              ),
-            ),
+            Obx(() {
+              final home = Get.find<HomeController>();
+              final timeoutLimitSec = home.timeoutCall ~/ 1000;
+              
+              // Dynamically check the index and elapsed seconds reactively inside Obx
+              final index = controller.calls.indexOf(call);
+              int currentSeconds = 0;
+              if (index != -1 && index < controller.callSeconds.length) {
+                currentSeconds = controller.callSeconds[index];
+              }
+
+              final showAnswerButton = currentSeconds < (timeoutLimitSec - 10);
+              print('DEBUG_LOG_UI: index=$index, currentSeconds=$currentSeconds, timeoutLimitSec=$timeoutLimitSec, showAnswerButton=$showAnswerButton');
+
+              if (!showAnswerButton) return const SizedBox.shrink();
+
+              final isAnswering = controller.isAnswering.value;
+
+              return ElevatedButton.icon(
+                onPressed: isAnswering ? null : () => controller.handlerAnswer(call),
+                icon: isAnswering 
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.call, color: Color(0xFF22C55E)),
+                label: Text(
+                  isAnswering ? 'Menghubungkan...' : 'Jawab',
+                  style: TextStyle(
+                    fontSize: isAnswering ? 11 : null,
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[200],
+                ),
+              );
+            }),
         ],
       ),
     );

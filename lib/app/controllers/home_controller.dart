@@ -21,6 +21,9 @@ class HomeController extends GetxController {
   final themeColor = const Color(0xFF2563EB).obs;
 
   Timer? _serverTimeout;
+  
+  // Completer to wait for startup initialization
+  final Completer<void> initCompleter = Completer<void>();
 
   // Config from utils table
   int intervalSpeaks = 7000;
@@ -76,6 +79,10 @@ class HomeController extends GetxController {
       await audio.init();
     } catch (e) {
       print('HomeController init error: $e');
+    } finally {
+      if (!initCompleter.isCompleted) {
+        initCompleter.complete();
+      }
     }
   }
 

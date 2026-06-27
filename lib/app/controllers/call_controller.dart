@@ -14,6 +14,7 @@ import 'message_controller.dart';
 class CallController extends GetxController {
   final calls = <Map<String, dynamic>>[].obs;
   final onSession = false.obs;
+  final isAnswering = false.obs;
 
   Timer? _timeout;
   Timer? _timeoutSipError;
@@ -74,7 +75,12 @@ class CallController extends GetxController {
         callSeconds.clear();
         return;
       }
+      final home = Get.find<HomeController>();
+      final timeoutLimitSec = home.timeoutCall ~/ 1000;
+      
       List<int> newSeconds = [];
+      List<Map<String, dynamic>> callsToTimeout = [];
+
       for (int i = 0; i < calls.length; i++) {
         final call = calls[i];
         int second = 0;
@@ -91,7 +97,12 @@ class CallController extends GetxController {
               .abs();
         }
 
-        // Auto hangup at 600 seconds (from Telpon.jsx line 20-22)
+        // Handle unanswered incoming call timeouts individually
+        if (call['type'] == 'incoming' && call['created_at'] == null && second >= timeoutLimitSec) {
+          callsToTimeout.add(call);
+        }
+
+        // Auto hangup active call at 600 seconds (from Telpon.jsx line 20-22)
         if (second > 600 && i == 0) {
           hangUp();
           return;
@@ -99,10 +110,66 @@ class CallController extends GetxController {
 
         newSeconds.add(second);
       }
+
       callSeconds.assignAll(newSeconds);
+
+      // Process timeout for any expired calls
+      if (callsToTimeout.isNotEmpty) {
+        for (final call in callsToTimeout) {
+          _handleSingleCallTimeout(call);
+        }
+      }
     } catch (e) {
       print('Error updating call seconds: $e');
     }
+  }
+
+  void _handleSingleCallTimeout(Map<String, dynamic> call) {
+    final audio = Get.find<AudioService>();
+    final topic = call['topic'];
+    String id = topic;
+    if (id.contains('/')) {
+      id = id.split('/').last;
+    }
+    
+    print('DEBUG_LOG: Call timeout triggered for ID $id (elapsed >= DB timeout)');
+
+    final isFirstCall = (calls.isNotEmpty && calls[0]['topic'] == topic);
+    if (isFirstCall) {
+      audio.stopRinging();
+      audio.playRejected();
+    }
+
+    final messageCtrl = Get.find<MessageController>();
+    messageCtrl.addMessage('tidakterjawab/$id', '0', call['name']);
+
+    final mqtt = Get.find<MqttService>();
+    mqtt.publish('tidakterjawab/$id', 'y', qos: MqttQos.atLeastOnce, retain: true);
+    mqtt.publish('stop/$id', 's', qos: MqttQos.atLeastOnce, retain: true);
+    mqtt.publish('call/$id', 'x', qos: MqttQos.atLeastOnce, retain: true);
+
+    final db = Get.find<DatabaseService>();
+    db.createHistory(id, 2).then((_) {
+      print('DEBUG_LOG: Removing call $topic from queue after history created.');
+      final index = calls.indexWhere((c) => c['topic'] == topic);
+      if (index != -1) {
+        calls.removeAt(index);
+        if (index == 0) {
+          // If we removed the first call, clean up session state and trigger next
+          onSession.value = false;
+          if (calls.isNotEmpty) {
+            calls[0] = {
+              ...calls[0],
+              'started_at': DateTime.now().toIso8601String(),
+            };
+          }
+          _saveState();
+          _newCall();
+        } else {
+          _saveState();
+        }
+      }
+    });
   }
 
   void _handleMqttMessage(String topic, String message) {
@@ -223,67 +290,53 @@ class CallController extends GetxController {
 
   /// Manage ringing and timeout — port of App.jsx newCall() (line 286-321)
   void _newCall() {
+    print('DEBUG_LOG: _newCall() triggered. calls size: ${calls.length}, onSession: ${onSession.value}');
     final audio = Get.find<AudioService>();
 
     _updateCallSeconds();
 
     if (calls.isNotEmpty) {
       print('RINGING');
+      print('DEBUG_LOG: Playing ringing. First call in queue: topic=${calls[0]['topic']}, created_at=${calls[0]['created_at']}');
       audio.playRinging();
 
       if (onSession.value) {
+        print('DEBUG_LOG: onSession is true, immediately stopping ringing.');
         audio.stopRinging();
       }
-
-      final home = Get.find<HomeController>();
-      _timeout?.cancel();
-      _timeout = Timer(Duration(milliseconds: home.timeoutCall), () {
-        print('masuk timeout');
-        if (!onSession.value && calls.isNotEmpty) {
-          audio.stopRinging();
-          final id = calls[0]['topic'].substring(5);
-          final messageCtrl = Get.find<MessageController>();
-          messageCtrl.addMessage(
-              'tidakterjawab/$id', '0', calls[0]['name']);
-          print('TIMEOUT TELPON $id');
-
-          final mqtt = Get.find<MqttService>();
-          mqtt.publish('tidakterjawab/$id', 'y',
-              qos: MqttQos.atLeastOnce, retain: true);
-          mqtt.publish('stop/$id', 's',
-              qos: MqttQos.atLeastOnce, retain: true);
-          mqtt.publish('call/$id', 'x',
-              qos: MqttQos.atLeastOnce, retain: true);
-
-          audio.playRejected();
-
-          // Create history: category 2 = tidak terjawab
-          final db = Get.find<DatabaseService>();
-          db.createHistory(id, 2).then((_) {
-            calls.removeAt(0);
-            onSession.value = false;
-            _saveState();
-          });
-        }
-      });
     } else {
+      print('DEBUG_LOG: calls is empty, stopping ringing.');
       audio.stopRinging();
     }
   }
 
   /// Hang up — port of App.jsx hangUp() (line 455-497)
   void hangUp() {
+    print('DEBUG_LOG: hangUp() called. Current calls size before remove: ${calls.length}');
     final mqtt = Get.find<MqttService>();
     final sip = Get.find<SipService>();
     final audio = Get.find<AudioService>();
+
+    _timeout?.cancel();
+    _timeoutSipError?.cancel();
 
     // SIP hangup (replaces mqtt.publish("tutup", "1"))
     sip.hangUp();
     audio.stopRinging();
 
+    if (calls.isEmpty) {
+      print('DEBUG_LOG: hangUp() calls list is empty, aborting.');
+      onSession.value = false;
+      _saveState();
+      return;
+    }
+
+    final activeCall = calls.removeAt(0);
+    print('DEBUG_LOG: Removed active call: topic=${activeCall['topic']}, name=${activeCall['name']}, created_at=${activeCall['created_at']}, type=${activeCall['type']}');
+
     try {
       print('HANGUP TELPON');
-      final createdAt = calls[0]['created_at'];
+      final createdAt = activeCall['created_at'];
       int time = 0;
       if (createdAt != null) {
         time = DateTime.now()
@@ -293,18 +346,21 @@ class CallController extends GetxController {
       }
       print('WAKTU TELPON : $time');
 
-      final id = calls[0]['topic'].substring(5);
+      String id = activeCall['topic'];
+      if (id.contains('/')) {
+        id = id.split('/').last;
+      }
       mqtt.publish('call/$id', 'h', qos: MqttQos.atLeastOnce, retain: true);
 
-      if (calls[0]['state'] == 0) {
-        // Incoming call not answered by nurse
+      if (activeCall['type'] == 'incoming') {
         mqtt.publish('stop/$id', 'm', qos: MqttQos.atLeastOnce, retain: true);
         final messageCtrl = Get.find<MessageController>();
-        messageCtrl.addMessage(calls[0]['topic'], 'w', calls[0]['name']);
+        print('DEBUG_LOG: activeCall is incoming, adding message ${activeCall['topic']} with code w');
+        messageCtrl.addMessage(activeCall['topic'], 'w', activeCall['name']);
       }
 
       final db = Get.find<DatabaseService>();
-      if (calls[0]['type'] == 'incoming') {
+      if (activeCall['type'] == 'incoming') {
         mqtt.publish('call/$id', 'l',
             qos: MqttQos.atLeastOnce, retain: true);
         db.createHistory(id, 1,
@@ -314,25 +370,41 @@ class CallController extends GetxController {
             duration: _getWaktuTerbilang(time));
       }
     } catch (e) {
-      print(e);
+      print('DEBUG_LOG: Exception caught in hangUp try block: $e');
       _timeout?.cancel();
-      if (calls.isNotEmpty) {
-        final id = calls[0]['topic'].substring(5);
-        mqtt.publish('stop/$id', 's',
-            qos: MqttQos.atLeastOnce, retain: true);
-        mqtt.publish('call/$id', 'c',
-            qos: MqttQos.atLeastOnce, retain: true);
-        print('HANGUP TELPON KARENA TIDAK DIJAWAB');
+      String id = activeCall['topic'];
+      if (id.contains('/')) {
+        id = id.split('/').last;
       }
+      mqtt.publish('stop/$id', 's',
+          qos: MqttQos.atLeastOnce, retain: true);
+      mqtt.publish('call/$id', 'c',
+          qos: MqttQos.atLeastOnce, retain: true);
+      print('HANGUP TELPON KARENA TIDAK DIJAWAB');
     }
 
-    if (calls.isNotEmpty) calls.removeAt(0);
+    print('DEBUG_LOG: After hangUp processing. Remaining calls size: ${calls.length}');
+    if (calls.isNotEmpty) {
+      print('DEBUG_LOG: Resetting started_at for new first call in queue: ${calls[0]['topic']}');
+      // Reset started_at for the next call in queue so the timer starts from 0
+      calls[0] = {
+        ...calls[0],
+        'started_at': DateTime.now().toIso8601String(),
+      };
+    }
     onSession.value = false;
     _saveState();
+    _newCall();
   }
 
   /// Answer incoming call — port of App.jsx handlerAnswer() (line 499-520)
   void handlerAnswer(Map<String, dynamic> call) {
+    if (isAnswering.value) {
+      print('DEBUG_LOG: Already answering call, ignoring duplicate answer request.');
+      return;
+    }
+    isAnswering.value = true;
+
     final mqtt = Get.find<MqttService>();
     final sip = Get.find<SipService>();
 
@@ -343,6 +415,7 @@ class CallController extends GetxController {
     final audio = Get.find<AudioService>();
     _timeoutSipError?.cancel();
     _timeoutSipError = Timer(const Duration(seconds: 15), () {
+      isAnswering.value = false;
       if (calls.isEmpty) return;
       mqtt.publish(calls[0]['topic'], 'x',
           qos: MqttQos.atLeastOnce, retain: true);
@@ -363,6 +436,7 @@ class CallController extends GetxController {
   }
 
   void _onSipCallAccepted() {
+    isAnswering.value = false;
     // SIP confirmed — same as MQTT "panggil" = "1"
     final audio = Get.find<AudioService>();
     audio.stopRinging();
@@ -382,8 +456,12 @@ class CallController extends GetxController {
 
   void _onSipCallEnded() {
     // SIP call ended externally
-    if (calls.isNotEmpty) {
+    print('DEBUG_LOG: _onSipCallEnded() callback. onSession: ${onSession.value}, calls size: ${calls.length}');
+    if (onSession.value && calls.isNotEmpty) {
+      print('DEBUG_LOG: onSession is true, triggering hangUp()');
       hangUp();
+    } else {
+      print('DEBUG_LOG: onSession is false, ignoring SIP ended event for waiting call.');
     }
   }
 
