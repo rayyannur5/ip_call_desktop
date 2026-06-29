@@ -23,6 +23,12 @@ class CallController extends GetxController {
   /// Per-call elapsed seconds
   final callSeconds = <int>[].obs;
 
+  void bindSipCallbacks() {
+    final sip = Get.find<SipService>();
+    sip.onCallAccepted = _onSipCallAccepted;
+    sip.onCallEnded = _onSipCallEnded;
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -32,28 +38,38 @@ class CallController extends GetxController {
     mqtt.addMessageHandler(_handleMqttMessage);
 
     // Register SIP callbacks
-    final sip = Get.find<SipService>();
-    sip.onCallAccepted = _onSipCallAccepted;
-    sip.onCallEnded = _onSipCallEnded;
+    bindSipCallbacks();
 
-    // Start timer to update call seconds every second
-    _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateCallSeconds();
-    });
+    // Automatically manage callSeconds timer based on calls list
+    ever(calls, (_) => _manageCallTimer());
 
     // Restore state
     _restoreState();
+
+    _manageCallTimer();
+  }
+
+  void _manageCallTimer() {
+    if (calls.isNotEmpty) {
+      if (_callTimer == null) {
+        _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          _updateCallSeconds();
+        });
+      }
+    } else {
+      _callTimer?.cancel();
+      _callTimer = null;
+      callSeconds.clear();
+    }
   }
 
   void _restoreState() {
     try {
       final storage = Get.find<StorageService>();
-      final state = storage.appState;
-      if (state != null) {
+      final state = storage.appStateCalls;
+      if (state != null && state.isNotEmpty) {
         final decoded = jsonDecode(state);
-        if (decoded['calls'] != null) {
-          calls.value = List<Map<String, dynamic>>.from(decoded['calls']);
-        }
+        calls.value = List<Map<String, dynamic>>.from(decoded);
       }
     } catch (_) {}
   }
@@ -61,11 +77,7 @@ class CallController extends GetxController {
   void _saveState() {
     try {
       final storage = Get.find<StorageService>();
-      final messageCtrl = Get.find<MessageController>();
-      storage.appState = jsonEncode({
-        'calls': calls.toList(),
-        'messages': messageCtrl.messages.toList(),
-      });
+      storage.appStateCalls = jsonEncode(calls.toList());
     } catch (_) {}
   }
 
@@ -81,8 +93,10 @@ class CallController extends GetxController {
       List<int> newSeconds = [];
       List<Map<String, dynamic>> callsToTimeout = [];
 
-      for (int i = 0; i < calls.length; i++) {
-        final call = calls[i];
+      final currentCalls = List<Map<String, dynamic>>.from(calls);
+
+      for (int i = 0; i < currentCalls.length; i++) {
+        final call = currentCalls[i];
         int second = 0;
 
         if (call['created_at'] != null) {
@@ -97,8 +111,12 @@ class CallController extends GetxController {
               .abs();
         }
 
-        // Handle unanswered incoming call timeouts individually
-        if (call['type'] == 'incoming' && call['created_at'] == null && second >= timeoutLimitSec) {
+        // Handle unanswered incoming call timeouts individually with re-entrancy guard
+        if (call['type'] == 'incoming' && 
+            call['created_at'] == null && 
+            call['_timing_out'] != true && 
+            second >= timeoutLimitSec) {
+          call['_timing_out'] = true;
           callsToTimeout.add(call);
         }
 
@@ -124,7 +142,7 @@ class CallController extends GetxController {
     }
   }
 
-  void _handleSingleCallTimeout(Map<String, dynamic> call) {
+  Future<void> _handleSingleCallTimeout(Map<String, dynamic> call) async {
     final audio = Get.find<AudioService>();
     final topic = call['topic'];
     String id = topic;
@@ -148,33 +166,37 @@ class CallController extends GetxController {
     mqtt.publish('stop/$id', 's', qos: MqttQos.atLeastOnce, retain: true);
     mqtt.publish('call/$id', 'x', qos: MqttQos.atLeastOnce, retain: true);
 
-    final db = Get.find<DatabaseService>();
-    db.createHistory(id, 2).then((_) {
-      print('DEBUG_LOG: Removing call $topic from queue after history created.');
-      final index = calls.indexWhere((c) => c['topic'] == topic);
-      if (index != -1) {
-        calls.removeAt(index);
-        if (index == 0) {
-          // If we removed the first call, clean up session state and trigger next
-          onSession.value = false;
-          if (calls.isNotEmpty) {
-            calls[0] = {
-              ...calls[0],
-              'started_at': DateTime.now().toIso8601String(),
-            };
-          }
-          _saveState();
-          _newCall();
-        } else {
-          _saveState();
+    try {
+      final db = Get.find<DatabaseService>();
+      await db.createHistory(id, 2);
+    } catch (e) {
+      print('History creation error on timeout: $e');
+    }
+
+    print('DEBUG_LOG: Removing call $topic from queue after history created.');
+    final index = calls.indexWhere((c) => c['topic'] == topic);
+    if (index != -1) {
+      calls.removeAt(index);
+      if (index == 0) {
+        // If we removed the first call, clean up session state and trigger next
+        onSession.value = false;
+        if (calls.isNotEmpty) {
+          calls[0] = {
+            ...calls[0],
+            'started_at': DateTime.now().toIso8601String(),
+          };
         }
+        _saveState();
+        _newCall();
+      } else {
+        _saveState();
       }
-    });
+    }
   }
 
   void _handleMqttMessage(String topic, String message) {
     // Handle incoming calls — from App.jsx line 131-165
-    if (topic.contains('call')) {
+    if (topic.startsWith('call/')) {
       if (message == '1') {
         bool exist = calls.any((c) => c['topic'] == topic);
         if (!exist) {
@@ -189,7 +211,7 @@ class CallController extends GetxController {
     }
 
     // Handle call answered confirmation — from App.jsx line 179-190
-    if (topic.contains('panggil') && message == '1') {
+    if (topic == 'panggil' && message == '1') {
       final audio = Get.find<AudioService>();
       audio.stopRinging();
       print('dijawab');
@@ -319,6 +341,7 @@ class CallController extends GetxController {
 
     _timeout?.cancel();
     _timeoutSipError?.cancel();
+    isAnswering.value = false;
 
     // SIP hangup (replaces mqtt.publish("tutup", "1"))
     sip.hangUp();
@@ -408,9 +431,14 @@ class CallController extends GetxController {
     final mqtt = Get.find<MqttService>();
     final sip = Get.find<SipService>();
 
-    // SIP call (replaces mqtt.publish("panggil", call.phone))
-    sip.makeCall(call['phone']);
-    mqtt.publish(call['topic'], 'a', qos: MqttQos.atLeastOnce, retain: true);
+    try {
+      // SIP call (replaces mqtt.publish("panggil", call.phone))
+      sip.makeCall(call['phone']);
+      mqtt.publish(call['topic'], 'a', qos: MqttQos.atLeastOnce, retain: true);
+    } catch (e) {
+      print('SIP call failed: $e');
+      isAnswering.value = false;
+    }
 
     final audio = Get.find<AudioService>();
     _timeoutSipError?.cancel();

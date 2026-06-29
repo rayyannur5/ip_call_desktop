@@ -31,13 +31,10 @@ class MessageController extends GetxController {
   void _restoreState() {
     try {
       final storage = Get.find<StorageService>();
-      final state = storage.appState;
-      if (state != null) {
+      final state = storage.appStateMessages;
+      if (state != null && state.isNotEmpty) {
         final decoded = jsonDecode(state);
-        if (decoded['messages'] != null) {
-          messages.value =
-              List<Map<String, dynamic>>.from(decoded['messages']);
-        }
+        messages.value = List<Map<String, dynamic>>.from(decoded);
       }
     } catch (_) {}
   }
@@ -45,17 +42,13 @@ class MessageController extends GetxController {
   void _saveState() {
     try {
       final storage = Get.find<StorageService>();
-      final callCtrl = Get.find<CallController>();
-      storage.appState = jsonEncode({
-        'calls': callCtrl.calls.toList(),
-        'messages': messages.toList(),
-      });
+      storage.appStateMessages = jsonEncode(messages.toList());
     } catch (_) {}
   }
 
   /// Handle MQTT messages — exact port of App.jsx constructor message handler
   void _handleMqttMessage(String topic, String message) {
-    if (topic.contains('toilet')) {
+    if (topic.startsWith('toilet/')) {
       if (message == 'c' || message == 'x') {
         deleteMessage(topic, message, 'darurat');
       } else if (message == 'e') {
@@ -63,12 +56,12 @@ class MessageController extends GetxController {
       }
     }
 
-    if (topic.contains('bed')) {
-      final id = topic.substring(4);
+    if (topic.startsWith('bed/')) {
+      final id = topic.split('/').last;
       _handleBedMessage(id, topic, message);
     }
 
-    if (topic.contains('infus')) {
+    if (topic.startsWith('infus/')) {
       if (message == 'c' || message == 'x') {
         deleteMessage(topic, message, 'infus');
       } else if (message == 'i') {
@@ -76,7 +69,7 @@ class MessageController extends GetxController {
       }
     }
 
-    if (topic.contains('blue')) {
+    if (topic.startsWith('blue/')) {
       if (message == 'c' || message == 'x') {
         deleteMessage(topic, message, 'blue');
       } else if (message == 'b') {
@@ -84,7 +77,7 @@ class MessageController extends GetxController {
       }
     }
 
-    if (topic.contains('assist')) {
+    if (topic.startsWith('assist/')) {
       if (message == 'c' || message == 'x') {
         deleteMessage(topic, message, 'assist');
       } else if (message == 'a') {
@@ -92,13 +85,13 @@ class MessageController extends GetxController {
       }
     }
 
-    if (topic.contains('tidakterjawab')) {
+    if (topic.startsWith('tidakterjawab/')) {
       if (message == 'x') {
         deleteMessage(topic, message, '');
       }
     }
 
-    if (topic.contains('room')) {
+    if (topic.startsWith('room') || topic.contains('_room')) {
       if (message == 'e') {
         addMessage(topic, message, '');
       } else if (message == 'c') {
@@ -144,16 +137,16 @@ class MessageController extends GetxController {
     if (name.isEmpty) {
       try {
         final db = Get.find<DatabaseService>();
-        if (topic.contains('toilet')) {
-          final id = topic.substring(7);
+        if (topic.startsWith('toilet/')) {
+          final id = topic.split('/').last;
           final toilet = await db.getToiletById(id);
           resolvedName = toilet?['username'] ?? '';
-        } else if (topic.contains('room')) {
+        } else if (topic.startsWith('room') || topic.contains('_room')) {
           final parts = topic.split('_');
           final room = await db.getRoomById(parts[0]);
           resolvedName = 'Ruang ${room?['name'] ?? ''}';
         } else {
-          final id = topic.substring(topic.length - 6);
+          final id = topic.contains('/') ? topic.split('/').last : topic;
           final bed = await db.getBedById(id);
           resolvedName = bed?['username'] ?? '';
         }
@@ -172,17 +165,15 @@ class MessageController extends GetxController {
     // Check toilet priority setting
     bool toiletPriority = false;
     try {
-      final db = Get.find<DatabaseService>();
-      final utils = await db.getUtils();
-      toiletPriority = (utils['toilet_priority'] ?? 0.0) == 1.0;
+      toiletPriority = Get.find<HomeController>().toiletPriority.value;
     } catch (_) {}
 
     if (toiletPriority) {
       // If it's a toilet message, insert it after existing toilet messages but before other types of messages
-      if (topic.contains('toilet')) {
+      if (topic.startsWith('toilet/')) {
         int insertIndex = 0;
         for (int i = 0; i < messages.length; i++) {
-          if (messages[i]['topic'].toString().contains('toilet')) {
+          if (messages[i]['topic'].toString().startsWith('toilet/')) {
             insertIndex = i + 1;
           } else {
             break;
@@ -224,7 +215,7 @@ class MessageController extends GetxController {
 
     // Create log entry
     final db = Get.find<DatabaseService>();
-    final deviceId = topic.substring(topic.length - 6);
+    final deviceId = topic.contains('/') ? topic.split('/').last : topic;
     final nursePresence = message == 'c' ? 1 : 0;
     db.createLog(type, deviceId, seconds, nursePresence).then((_) {
       final home = Get.find<HomeController>();
@@ -254,67 +245,60 @@ class MessageController extends GetxController {
     }
   }
 
+  void clearAllMessages() {
+    messages.clear();
+    _saveState();
+    _newMessage();
+  }
+
   /// Speak interval logic — port of App.jsx newMessage() (line 409-453)
   void _newMessage() {
-    final audio = Get.find<AudioService>();
+    _speakInterval?.cancel();
+    _speakInterval = null;
+
+    _indexInterval = 0;
+    _counterIndexInterval = 0;
 
     if (messages.isNotEmpty) {
-      if (_speakInterval == null) {
-        print('SPEAK');
+      _doSpeak();
+      final home = Get.find<HomeController>();
+      _speakInterval = Timer.periodic(
+        Duration(milliseconds: home.intervalSpeaks),
+        (_) => _doSpeak(),
+      );
+    }
+  }
 
-        try {
-          final callCtrl = Get.find<CallController>();
-          if (!callCtrl.onSession.value) {
-            audio.speak(
-              '${getCategoryMessage(0)} ${messages[0]['username']}',
-              messages[_indexInterval]['message'],
-              messages[_indexInterval]['username'],
-            );
-          }
-        } catch (e) {
-          print(e);
-          _indexInterval = 0;
-          _counterIndexInterval = 0;
-        }
+  void _doSpeak() {
+    if (messages.isEmpty) return;
+    if (_indexInterval >= messages.length) {
+      _indexInterval = 0;
+      _counterIndexInterval = 0;
+    }
 
-        final home = Get.find<HomeController>();
-        _speakInterval = Timer.periodic(
-          Duration(milliseconds: home.intervalSpeaks),
-          (_) {
-            _counterIndexInterval++;
-            if (_counterIndexInterval == 3) {
-              _counterIndexInterval = 0;
-              _indexInterval++;
-              if (_indexInterval >= messages.length) {
-                _indexInterval = 0;
-              }
-            }
-
-            if (_indexInterval >= messages.length) {
-              _indexInterval = 0;
-              _counterIndexInterval = 0;
-            }
-
-            try {
-              final callCtrl = Get.find<CallController>();
-              if (!callCtrl.onSession.value) {
-                audio.speak(
-                  '${getCategoryMessage(_indexInterval)} ${messages[_indexInterval]['username']}',
-                  messages[_indexInterval]['message'],
-                  messages[_indexInterval]['username'],
-                );
-              }
-            } catch (e) {
-              print(e);
-              _indexInterval = 0;
-              _counterIndexInterval = 0;
-            }
-          },
+    try {
+      final audio = Get.find<AudioService>();
+      final callCtrl = Get.find<CallController>();
+      if (!callCtrl.onSession.value) {
+        audio.speak(
+          '${getCategoryMessage(_indexInterval)} ${messages[_indexInterval]['username']}',
+          messages[_indexInterval]['message'],
+          messages[_indexInterval]['username'],
         );
       }
-    } else {
-      _speakInterval?.cancel();
-      _speakInterval = null;
+    } catch (e) {
+      print('doSpeak error: $e');
+      _indexInterval = 0;
+      _counterIndexInterval = 0;
+    }
+
+    _counterIndexInterval++;
+    if (_counterIndexInterval >= 3) {
+      _counterIndexInterval = 0;
+      _indexInterval++;
+      if (_indexInterval >= messages.length) {
+        _indexInterval = 0;
+      }
     }
   }
 

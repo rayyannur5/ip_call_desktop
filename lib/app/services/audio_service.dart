@@ -12,11 +12,34 @@ import 'storage_service.dart';
 /// Port of speak.js — 100% same logic
 class AudioService extends GetxService {
   final Map<String, String> _soundPaths = {};
-  late final AudioPlayer _ringingPlayer;
-  late final AudioPlayer _rejectedPlayer;
-  late final AudioPlayer _speakPlayer;
+  late AudioPlayer _ringingPlayer;
+  late AudioPlayer _rejectedPlayer;
+  late AudioPlayer _speakPlayer;
 
   bool _isRinging = false;
+  bool _isSpeaking = false;
+  static final _letterRegex = RegExp(r'^[a-zA-Z]$');
+
+  void _recreateSpeakPlayer() {
+    try {
+      _speakPlayer.dispose();
+    } catch (_) {}
+    _speakPlayer = AudioPlayer();
+  }
+
+  void _recreateRingingPlayer() {
+    try {
+      _ringingPlayer.dispose();
+    } catch (_) {}
+    _ringingPlayer = AudioPlayer();
+  }
+
+  void _recreateRejectedPlayer() {
+    try {
+      _rejectedPlayer.dispose();
+    } catch (_) {}
+    _rejectedPlayer = AudioPlayer();
+  }
 
   @override
   void onInit() {
@@ -127,6 +150,8 @@ class AudioService extends GetxService {
         await _speakPlayer.play(AssetSource(path));
       }
     } catch (e) {
+      print('Play sound failed: $e, recreating AudioPlayer...');
+      _recreateSpeakPlayer();
       onComplete();
     }
 
@@ -166,11 +191,16 @@ class AudioService extends GetxService {
   }
 
   bool _isLetter(String char) {
-    return RegExp(r'^[a-zA-Z]$').hasMatch(char);
+    return _letterRegex.hasMatch(char);
   }
 
   /// Port of speak() in speak.js — exact same logic
   Future<void> speak(String str, String msg, String username) async {
+    if (_isSpeaking) {
+      print('AudioService is already speaking, skipping.');
+      return;
+    }
+    _isSpeaking = true;
     try {
       final mqtt = Get.find<MqttService>();
 
@@ -229,6 +259,8 @@ class AudioService extends GetxService {
       }
     } catch (e) {
       print('Speak error: $e');
+    } finally {
+      _isSpeaking = false;
     }
   }
 
@@ -237,17 +269,36 @@ class AudioService extends GetxService {
   Future<void> playRinging() async {
     if (_isRinging) return;
     _isRinging = true;
-    await _ringingPlayer.setReleaseMode(ReleaseMode.loop);
-    await _ringingPlayer.play(AssetSource('sounds/ringing.ogg'));
+    try {
+      await _ringingPlayer.setReleaseMode(ReleaseMode.loop);
+      await _ringingPlayer.play(AssetSource('sounds/ringing.ogg'));
+    } catch (e) {
+      print('Play ringing failed: $e, recreating AudioPlayer...');
+      _recreateRingingPlayer();
+      try {
+        await _ringingPlayer.setReleaseMode(ReleaseMode.loop);
+        await _ringingPlayer.play(AssetSource('sounds/ringing.ogg'));
+      } catch (_) {}
+    }
   }
 
   void stopRinging() {
     _isRinging = false;
-    _ringingPlayer.stop();
+    try {
+      _ringingPlayer.stop();
+    } catch (_) {}
   }
 
   Future<void> playRejected() async {
-    await _rejectedPlayer.play(AssetSource('sounds/rejected.mp3'));
+    try {
+      await _rejectedPlayer.play(AssetSource('sounds/rejected.mp3'));
+    } catch (e) {
+      print('Play rejected failed: $e, recreating AudioPlayer...');
+      _recreateRejectedPlayer();
+      try {
+        await _rejectedPlayer.play(AssetSource('sounds/rejected.mp3'));
+      } catch (_) {}
+    }
   }
 
   @override

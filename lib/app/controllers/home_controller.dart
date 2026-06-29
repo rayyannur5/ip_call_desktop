@@ -8,6 +8,8 @@ import '../services/audio_service.dart';
 import '../services/storage_service.dart';
 import 'call_controller.dart';
 import 'message_controller.dart';
+import 'device_controller.dart';
+import 'contact_controller.dart';
 
 class HomeController extends GetxController {
   final onDevices = false.obs;
@@ -50,41 +52,50 @@ class HomeController extends GetxController {
   }
 
   Future<void> _initServices() async {
+    // 1. Connect to database
     try {
-      // Connect to database
       final db = Get.find<DatabaseService>();
       await db.connect();
 
       // Load utils config
       final utils = await db.getUtils();
-      intervalSpeaks =
-          (utils['interval_speaks'] ?? 7000).toInt();
-      timeoutCall =
-          (utils['timeout_call'] ?? 60000).toInt();
-      intervalUpdateStatus =
-          (utils['interval_update_status'] ?? 10000).toInt();
+      intervalSpeaks = (utils['interval_speaks'] ?? 7000).toInt();
+      timeoutCall = (utils['timeout_call'] ?? 60000).toInt();
+      intervalUpdateStatus = (utils['interval_update_status'] ?? 10000).toInt();
       toiletPriority.value = (utils['toilet_priority'] ?? 0.0) == 1.0;
+    } catch (e) {
+      print('HomeController database init error: $e');
+    }
 
-      // Connect MQTT
+    // 2. Connect MQTT
+    try {
       final mqtt = Get.find<MqttService>();
       await mqtt.connect();
 
       // Register MQTT handler for 'internal' heartbeat
       mqtt.addMessageHandler(_handleInternalHeartbeat);
+    } catch (e) {
+      print('HomeController MQTT init error: $e');
+    }
 
-      // Register SIP
+    // 3. Register SIP
+    try {
       final sip = Get.find<SipService>();
       await sip.register();
+    } catch (e) {
+      print('HomeController SIP init error: $e');
+    }
 
-      // Init audio
+    // 4. Init audio
+    try {
       final audio = Get.find<AudioService>();
       await audio.init();
     } catch (e) {
-      print('HomeController init error: $e');
-    } finally {
-      if (!initCompleter.isCompleted) {
-        initCompleter.complete();
-      }
+      print('HomeController audio init error: $e');
+    }
+
+    if (!initCompleter.isCompleted) {
+      initCompleter.complete();
     }
   }
 
@@ -189,9 +200,16 @@ class HomeController extends GetxController {
       sip.unregister();
       await sip.register();
 
+      // Re-bind callbacks
+      Get.find<CallController>().bindSipCallbacks();
+
       // Init audio
       final audio = Get.find<AudioService>();
       await audio.init();
+
+      // Reload controllers data
+      await Get.find<DeviceController>().loadDevices();
+      await Get.find<ContactController>().loadContacts();
 
       Get.snackbar('Berhasil', 'Seluruh koneksi telah di-refresh',
           snackPosition: SnackPosition.bottom);

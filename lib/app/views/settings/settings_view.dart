@@ -59,76 +59,72 @@ class _SettingsViewState extends State<SettingsView> {
 
               // UI / Tampilan Section
               _buildSectionTitle('Tampilan'),
-              GetBuilder<HomeController>(
-                init: Get.find<HomeController>(),
-                builder: (homeCtrl) {
-                  return Obx(() {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Obx(() {
+                final homeCtrl = Get.find<HomeController>();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Dark Mode Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Dark Mode Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.dark_mode, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Dark Mode',
-                                  style: TextStyle(fontWeight: FontWeight.w500),
-                                ),
-                              ],
-                            ),
-                            Switch(
-                              value: homeCtrl.isDarkMode.value,
-                              onChanged: (_) => homeCtrl.toggleDarkMode(),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        
-                        // Theme Colors Row
                         const Row(
                           children: [
-                            Icon(Icons.palette, size: 20),
+                            Icon(Icons.dark_mode, size: 20),
                             SizedBox(width: 8),
                             Text(
-                              'Warna Tema',
+                              'Dark Mode',
                               style: TextStyle(fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            // Preset Blue
-                            _buildColorPreset(homeCtrl, const Color(0xFF2563EB), 'Biru'),
-                            // Preset Green
-                            _buildColorPreset(homeCtrl, const Color(0xFF16A34A), 'Hijau'),
-                            // Preset Orange/Red
-                            _buildColorPreset(homeCtrl, const Color(0xFFEA580C), 'Oranye'),
-                            // Preset Purple
-                            _buildColorPreset(homeCtrl, const Color(0xFF9333EA), 'Ungu'),
-                            
-                            // Custom Color Button
-                            OutlinedButton.icon(
-                              onPressed: () => _showColorPickerDialog(context, homeCtrl),
-                              icon: const Icon(Icons.color_lens, size: 16),
-                              label: const Text('Custom'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              ),
-                            ),
-                          ],
+                        Switch(
+                          value: homeCtrl.isDarkMode.value,
+                          onChanged: (_) => homeCtrl.toggleDarkMode(),
                         ),
                       ],
-                    );
-                  });
-                },
-              ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Theme Colors Row
+                    const Row(
+                      children: [
+                        Icon(Icons.palette, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Warna Tema',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        // Preset Blue
+                        _buildColorPreset(homeCtrl, const Color(0xFF2563EB), 'Biru'),
+                        // Preset Green
+                        _buildColorPreset(homeCtrl, const Color(0xFF16A34A), 'Hijau'),
+                        // Preset Orange/Red
+                        _buildColorPreset(homeCtrl, const Color(0xFFEA580C), 'Oranye'),
+                        // Preset Purple
+                        _buildColorPreset(homeCtrl, const Color(0xFF9333EA), 'Ungu'),
+                        
+                        // Custom Color Button
+                        OutlinedButton.icon(
+                          onPressed: () => _showColorPickerDialog(context, homeCtrl),
+                          icon: const Icon(Icons.color_lens, size: 16),
+                          label: const Text('Custom'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              }),
               const SizedBox(height: 16),
 
               // Linux-specific features (Accessible to everyone at the top)

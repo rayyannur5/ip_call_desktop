@@ -17,6 +17,10 @@ class SipService extends GetxService implements SipUaHelperListener {
     final storage = Get.find<StorageService>();
     if (storage.sipDomain.isEmpty || storage.sipUsername.isEmpty) return;
 
+    if (_helper != null) {
+      unregister();
+    }
+
     _helper = SIPUAHelper();
     _helper!.addSipUaHelperListener(this);
 
@@ -112,6 +116,13 @@ class SipService extends GetxService implements SipUaHelperListener {
   @override
   void transportStateChanged(TransportState state) {
     print('SIP Transport: ${state.state}');
+    if (state.state == TransportStateEnum.DISCONNECTED) {
+      Future.delayed(const Duration(seconds: 5), () {
+        if (_helper != null && !isRegistered.value) {
+          register();
+        }
+      });
+    }
   }
 
   @override

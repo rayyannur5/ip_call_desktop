@@ -6,17 +6,23 @@ import 'dart:async';
 class DatabaseService extends GetxService {
   MySQLConnection? _conn;
   final isConnected = false.obs;
+  bool _isPingRunning = false;
   Future<void>? _connectFuture;
   Timer? _pingTimer;
 
   Future<void> connect() async {
     if (_connectFuture != null) {
-      return _connectFuture;
+      return _connectFuture!;
     }
+    _connectFuture = _doConnect();
+    try {
+      await _connectFuture!;
+    } finally {
+      _connectFuture = null;
+    }
+  }
 
-    final completer = Completer<void>();
-    _connectFuture = completer.future;
-
+  Future<void> _doConnect() async {
     try {
       try {
         await _conn?.close();
@@ -33,14 +39,10 @@ class DatabaseService extends GetxService {
       );
       await _conn!.connect().timeout(const Duration(seconds: 5));
       isConnected.value = true;
-      completer.complete();
       _startPingTimer();
     } catch (e) {
       isConnected.value = false;
-      completer.completeError(e);
       rethrow;
-    } finally {
-      _connectFuture = null;
     }
   }
 
@@ -54,9 +56,10 @@ class DatabaseService extends GetxService {
   }
 
   Future<bool> testConnection() async {
+    MySQLConnection? conn;
     try {
       final storage = Get.find<StorageService>();
-      final conn = await MySQLConnection.createConnection(
+      conn = await MySQLConnection.createConnection(
         host: storage.serverHost,
         port: storage.dbPort,
         userName: storage.dbUsername,
@@ -65,10 +68,13 @@ class DatabaseService extends GetxService {
         secure: false,
       );
       await conn.connect().timeout(const Duration(seconds: 5));
-      await conn.close();
       return true;
     } catch (e) {
       return false;
+    } finally {
+      try {
+        await conn?.close();
+      } catch (_) {}
     }
   }
 
@@ -81,7 +87,13 @@ class DatabaseService extends GetxService {
   void _startPingTimer() {
     _pingTimer?.cancel();
     _pingTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      await checkConnectionHealth();
+      if (_isPingRunning) return;
+      _isPingRunning = true;
+      try {
+        await checkConnectionHealth();
+      } finally {
+        _isPingRunning = false;
+      }
     });
   }
 

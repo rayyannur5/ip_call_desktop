@@ -23,13 +23,38 @@ class _MessageViewState extends State<MessageView> {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       final ctrl = Get.find<MessageController>();
-      setState(() {
-        for (final msg in ctrl.messages) {
-          final topic = msg['topic'] as String;
-          final createdAt = DateTime.parse(msg['created_at']);
-          _seconds[topic] = DateTime.now().difference(createdAt).inSeconds.abs();
+      if (ctrl.messages.isEmpty) {
+        if (_seconds.isNotEmpty) {
+          setState(() {
+            _seconds.clear();
+          });
         }
-      });
+        return;
+      }
+
+      final Map<String, int> newSeconds = {};
+      for (final msg in ctrl.messages) {
+        final topic = msg['topic'] as String;
+        final createdAt = DateTime.parse(msg['created_at']);
+        newSeconds[topic] = DateTime.now().difference(createdAt).inSeconds.abs();
+      }
+
+      bool changed = _seconds.length != newSeconds.length;
+      if (!changed) {
+        for (final entry in newSeconds.entries) {
+          if (_seconds[entry.key] != entry.value) {
+            changed = true;
+            break;
+          }
+        }
+      }
+
+      if (changed) {
+        setState(() {
+          _seconds.clear();
+          _seconds.addAll(newSeconds);
+        });
+      }
     });
   }
 

@@ -34,10 +34,15 @@ class ContactController extends GetxController {
     currentDate.value =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-    _loadContacts();
+    // Register MQTT handler for active status
+    final mqtt = Get.find<MqttService>();
+    mqtt.addMessageHandler(_handleMqttMessage);
+
+    loadContacts();
   }
 
-  Future<void> _loadContacts() async {
+  Future<void> loadContacts() async {
+    isLoadingBeds.value = true;
     try {
       final home = Get.find<HomeController>();
       await home.initCompleter.future;
@@ -55,10 +60,6 @@ class ContactController extends GetxController {
       final d2w = await db.getDevices2Way();
       devices2w.value = d2w;
 
-      // Register MQTT handler for active status
-      final mqtt = Get.find<MqttService>();
-      mqtt.addMessageHandler(_handleMqttMessage);
-
       // Load history
       loadHistory(currentDate.value);
     } catch (e) {
@@ -71,7 +72,7 @@ class ContactController extends GetxController {
     if (topic.contains('aktif')) {
       for (final room in devices2w) {
         final deviceList =
-            room['device'] as List<Map<String, dynamic>>;
+            (room['device'] as List).cast<Map<String, dynamic>>();
         for (final item in deviceList) {
           if (message == item['id']) {
             item['active'] = true;
@@ -81,6 +82,7 @@ class ContactController extends GetxController {
               () {
                 print('timeout di kontak ${item['id']}');
                 item['active'] = false;
+                _deviceTimers.remove(item['id']);
                 devices2w.refresh();
               },
             );
@@ -102,7 +104,7 @@ class ContactController extends GetxController {
     List<Map<String, dynamic>> result = [];
 
     for (final room in devices2w) {
-      final devices = room['device'] as List<Map<String, dynamic>>;
+      final devices = (room['device'] as List).cast<Map<String, dynamic>>();
       final filteredDevices = devices.where((item) {
         final name = (item['username'] ?? '').toString().toLowerCase();
         return name.contains(query);

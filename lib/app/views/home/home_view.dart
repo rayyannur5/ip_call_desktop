@@ -18,9 +18,11 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     // If not configured, show settings
     final storage = Get.find<StorageService>();
-    if (!storage.isConfigured) {
+    if (!storage.isConfigured && Get.isDialogOpen != true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Get.dialog(const SettingsView(), barrierDismissible: false);
+        if (Get.isDialogOpen != true) {
+          Get.dialog(const SettingsView(), barrierDismissible: false);
+        }
       });
     }
 

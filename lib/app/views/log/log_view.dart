@@ -133,17 +133,17 @@ class LogView extends StatelessWidget {
 
             // Table Data (Scrollable)
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Data rows
-                    if (ctrl.logs.isEmpty)
-                      const Padding(
+              child: ctrl.logs.isEmpty
+                  ? const Center(
+                      child: Padding(
                         padding: EdgeInsets.all(16),
                         child: Text('Tidak ada data yang ditampilkan'),
-                      )
-                    else
-                      ...ctrl.logs.map((log) {
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: ctrl.logs.length,
+                      itemBuilder: (context, index) {
+                        final log = ctrl.logs[index];
                         final rawTime = log['time'];
                         final time = rawTime is int
                             ? rawTime
@@ -217,10 +217,8 @@ class LogView extends StatelessWidget {
                             ],
                           ),
                         );
-                      }),
-                  ],
-                ),
-              ),
+                      },
+                    ),
             ),
           ],
         ),

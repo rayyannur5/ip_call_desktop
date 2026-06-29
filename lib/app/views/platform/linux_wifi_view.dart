@@ -118,38 +118,65 @@ class LinuxWifiView extends GetView<LinuxWifiController> {
   }
 
   void _showConnectDialog(BuildContext context, String ssid) {
-    final passwordCtrl = TextEditingController();
     Get.dialog(
-      AlertDialog(
-        title: Text('Connect to $ssid'),
-        content: TextField(
-          controller: passwordCtrl,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            border: OutlineInputBorder(),
-          ),
+      _WifiConnectDialog(ssid: ssid, controller: controller),
+    );
+  }
+}
+
+class _WifiConnectDialog extends StatefulWidget {
+  final String ssid;
+  final LinuxWifiController controller;
+
+  const _WifiConnectDialog({
+    required this.ssid,
+    required this.controller,
+  });
+
+  @override
+  State<_WifiConnectDialog> createState() => _WifiConnectDialogState();
+}
+
+class _WifiConnectDialogState extends State<_WifiConnectDialog> {
+  final _passwordCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Connect to ${widget.ssid}'),
+      content: TextField(
+        controller: _passwordCtrl,
+        obscureText: true,
+        decoration: const InputDecoration(
+          labelText: 'Password',
+          border: OutlineInputBorder(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              final ok =
-                  await controller.connect(ssid, passwordCtrl.text);
-              Get.snackbar(
-                ok ? 'Berhasil' : 'Gagal',
-                ok ? 'Terhubung ke $ssid' : 'Gagal menghubungkan ke $ssid',
-                snackPosition: SnackPosition.bottom,
-              );
-            },
-            child: const Text('Connect'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            Navigator.of(context).pop();
+            final ok =
+                await widget.controller.connect(widget.ssid, _passwordCtrl.text);
+            Get.snackbar(
+              ok ? 'Berhasil' : 'Gagal',
+              ok ? 'Terhubung ke ${widget.ssid}' : 'Gagal menghubungkan ke ${widget.ssid}',
+              snackPosition: SnackPosition.bottom,
+            );
+          },
+          child: const Text('Connect'),
+        ),
+      ],
     );
   }
 }

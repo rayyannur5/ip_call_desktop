@@ -37,6 +37,7 @@ class CallPanelView extends GetView<CallController> {
                 call: call,
                 seconds: seconds,
                 isSession: true,
+                index: index,
               );
             } else {
               // Ringing state
@@ -44,6 +45,7 @@ class CallPanelView extends GetView<CallController> {
                 call: call,
                 seconds: seconds,
                 isSession: false,
+                index: index,
               );
             }
           } else {
@@ -76,6 +78,7 @@ class CallPanelView extends GetView<CallController> {
     required Map<String, dynamic> call,
     required int seconds,
     required bool isSession,
+    required int index,
   }) {
     return Container(
       margin: const EdgeInsets.all(12),
@@ -137,11 +140,11 @@ class CallPanelView extends GetView<CallController> {
               final home = Get.find<HomeController>();
               final timeoutLimitSec = home.timeoutCall ~/ 1000;
               
-              // Dynamically check the index and elapsed seconds reactively inside Obx
-              final index = controller.calls.indexOf(call);
               int currentSeconds = 0;
-              if (index != -1 && index < controller.callSeconds.length) {
+              if (index < controller.callSeconds.length) {
                 currentSeconds = controller.callSeconds[index];
+              } else {
+                currentSeconds = seconds;
               }
 
               final showAnswerButton = currentSeconds < (timeoutLimitSec - 10);

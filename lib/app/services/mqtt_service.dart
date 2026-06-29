@@ -7,6 +7,7 @@ import 'storage_service.dart';
 class MqttService extends GetxService {
   MqttServerClient? _client;
   final isConnected = false.obs;
+  StreamSubscription? _updatesSubscription;
 
   /// Deduplication set — same as processingTopics in App.jsx
   final Set<String> _processingTopics = {};
@@ -56,7 +57,8 @@ class MqttService extends GetxService {
 
     if (_client!.connectionStatus?.state == MqttConnectionState.connected) {
       isConnected.value = true;
-      _client!.updates?.listen(_onMessage, onError: (e) {
+      _updatesSubscription?.cancel();
+      _updatesSubscription = _client!.updates?.listen(_onMessage, onError: (e) {
         print('MQTT Updates stream error: $e');
       });
     }
@@ -65,16 +67,19 @@ class MqttService extends GetxService {
   void _onConnected() {
     print('MQTT CONNECTED');
     isConnected.value = true;
+    _startPing();
   }
 
   void _onDisconnected() {
     print('MQTT DISCONNECTED');
     isConnected.value = false;
+    _stopPing();
   }
 
   void _onAutoReconnected() {
     print('MQTT AUTO RECONNECTED');
     isConnected.value = true;
+    _startPing();
   }
 
   void _onMessage(List<MqttReceivedMessage<MqttMessage>> messages) {
@@ -95,7 +100,7 @@ class MqttService extends GetxService {
       print('$topic : $message');
 
       // Dispatch to all registered handlers
-      for (final handler in _messageHandlers) {
+      for (final handler in List.from(_messageHandlers)) {
         handler(topic, message);
       }
     }
@@ -137,7 +142,29 @@ class MqttService extends GetxService {
     }
   }
 
+  Timer? _pingTimer;
+
+  void _startPing() {
+    _stopPing();
+    _pingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (_client?.connectionStatus?.state == MqttConnectionState.connected) {
+        publish('ping', 'p');
+      } else {
+        _stopPing();
+      }
+    });
+  }
+
+  void _stopPing() {
+    _pingTimer?.cancel();
+    _pingTimer = null;
+  }
+
   Future<void> disconnect() async {
+    _stopPing();
+    _updatesSubscription?.cancel();
+    _updatesSubscription = null;
+    _processingTopics.clear();
     _client?.disconnect();
     _client = null;
     isConnected.value = false;
@@ -145,6 +172,7 @@ class MqttService extends GetxService {
 
   @override
   void onClose() {
+    _stopPing();
     disconnect();
     super.onClose();
   }

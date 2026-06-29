@@ -14,13 +14,34 @@ class DeviceController extends GetxController {
   // Timers per device for active status timeout
   final Map<String, Timer> _deviceTimers = {};
 
+  bool _isSubscribing = false;
+
   @override
   void onInit() {
     super.onInit();
-    _loadDevices();
+    
+    final mqtt = Get.find<MqttService>();
+    mqtt.addMessageHandler(_handleMqttMessage);
+
+    // Listen to connection status to trigger resubscribe
+    ever(mqtt.isConnected, (connected) {
+      if (connected) {
+        _subscribeAll();
+      }
+    });
+
+    // Periodic re-subscribe every 30s
+    _resubscribeTimer?.cancel();
+    _resubscribeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mqtt.isConnected.value) {
+        _subscribeAll();
+      }
+    });
+
+    loadDevices();
   }
 
-  Future<void> _loadDevices() async {
+  Future<void> loadDevices() async {
     try {
       final home = Get.find<HomeController>();
       await home.initCompleter.future;
@@ -30,79 +51,62 @@ class DeviceController extends GetxController {
       final grouped = await db.getDevicesGroupedByRoom();
       devices.value = grouped;
 
-      final mqtt = Get.find<MqttService>();
-      // Subscribe topics for each device if connected
-      if (mqtt.isConnected.value) {
-        _subscribeAll();
-      }
-
-      // Register MQTT handler
-      mqtt.addMessageHandler(_handleMqttMessage);
-
-      // Listen to connection status to trigger resubscribe
-      ever(mqtt.isConnected, (connected) {
-        if (connected) {
-          _subscribeAll();
-        }
-      });
-
-      // Periodic re-subscribe every 30s (from Devices.jsx line 18-54)
-      _resubscribeTimer?.cancel();
-      _resubscribeTimer =
-          Timer.periodic(const Duration(seconds: 30), (_) {
-        if (mqtt.isConnected.value) {
-          _subscribeAll();
-        }
-      });
+      _subscribeAll();
     } catch (e) {
       print('DeviceController load error: $e');
     }
   }
 
   Future<void> _subscribeAll() async {
-    final mqtt = Get.find<MqttService>();
-    if (!mqtt.isConnected.value) return;
+    if (_isSubscribing) return;
+    _isSubscribing = true;
+    try {
+      final mqtt = Get.find<MqttService>();
+      if (!mqtt.isConnected.value) return;
 
-    for (final room in devices) {
-      final deviceList =
-          room['device'] as List<Map<String, dynamic>>;
-      for (final item in deviceList) {
-        if (!mqtt.isConnected.value) return;
-        final id = item['id'] as String;
+      for (final room in devices) {
+        final deviceList =
+            (room['device'] as List).cast<Map<String, dynamic>>();
+        for (final item in deviceList) {
+          if (!mqtt.isConnected.value) return;
+          final id = item['id'] as String;
 
-        if (item['mic'] != null) {
-          // Bed device
-          mqtt.subscribe('call/$id');
-          await Future.delayed(const Duration(milliseconds: 20));
-          mqtt.subscribe('tidakterjawab/$id');
-          await Future.delayed(const Duration(milliseconds: 20));
-          mqtt.subscribe('bed/$id');
-          await Future.delayed(const Duration(milliseconds: 20));
-          mqtt.subscribe('infus/$id');
-          await Future.delayed(const Duration(milliseconds: 20));
-          mqtt.subscribe('blue/$id');
-          await Future.delayed(const Duration(milliseconds: 20));
-          mqtt.subscribe('assist/$id');
-          await Future.delayed(const Duration(milliseconds: 20));
-        } else if (id.contains('room')) {
-          // Room device
-          mqtt.subscribe(id);
-          await Future.delayed(const Duration(milliseconds: 20));
-        } else if (id.length > 1) {
-          // Toilet
-          mqtt.subscribe('toilet/$id');
-          await Future.delayed(const Duration(milliseconds: 20));
+          if (item['mic'] != null) {
+            // Bed device
+            mqtt.subscribe('call/$id');
+            await Future.delayed(const Duration(milliseconds: 20));
+            mqtt.subscribe('tidakterjawab/$id');
+            await Future.delayed(const Duration(milliseconds: 20));
+            mqtt.subscribe('bed/$id');
+            await Future.delayed(const Duration(milliseconds: 20));
+            mqtt.subscribe('infus/$id');
+            await Future.delayed(const Duration(milliseconds: 20));
+            mqtt.subscribe('blue/$id');
+            await Future.delayed(const Duration(milliseconds: 20));
+            mqtt.subscribe('assist/$id');
+            await Future.delayed(const Duration(milliseconds: 20));
+          } else if (id.contains('room')) {
+            // Room device
+            mqtt.subscribe(id);
+            await Future.delayed(const Duration(milliseconds: 20));
+          } else if (id.length > 1) {
+            // Toilet
+            mqtt.subscribe('toilet/$id');
+            await Future.delayed(const Duration(milliseconds: 20));
+          }
         }
       }
-    }
 
-    // Global subscriptions
-    if (!mqtt.isConnected.value) return;
-    mqtt.subscribe('panggil');
-    await Future.delayed(const Duration(milliseconds: 20));
-    mqtt.subscribe('internal');
-    await Future.delayed(const Duration(milliseconds: 20));
-    mqtt.subscribe('aktif');
+      // Global subscriptions
+      if (!mqtt.isConnected.value) return;
+      mqtt.subscribe('panggil');
+      await Future.delayed(const Duration(milliseconds: 20));
+      mqtt.subscribe('internal');
+      await Future.delayed(const Duration(milliseconds: 20));
+      mqtt.subscribe('aktif');
+    } finally {
+      _isSubscribing = false;
+    }
   }
 
   void _handleMqttMessage(String topic, String message) {
@@ -110,7 +114,7 @@ class DeviceController extends GetxController {
     if (topic.contains('aktif')) {
       for (final room in devices) {
         final deviceList =
-            room['device'] as List<Map<String, dynamic>>;
+            (room['device'] as List).cast<Map<String, dynamic>>();
         for (final item in deviceList) {
           if (item['bypass'] == '1' || item['bypass'] == true) {
             item['active'] = true;
@@ -124,6 +128,7 @@ class DeviceController extends GetxController {
               () {
                 print('timeout ${item['id']}');
                 item['active'] = false;
+                _deviceTimers.remove(item['id']);
                 devices.refresh();
               },
             );
@@ -147,7 +152,7 @@ class DeviceController extends GetxController {
 
     for (final room in devices) {
       final deviceList =
-          room['device'] as List<Map<String, dynamic>>;
+          (room['device'] as List).cast<Map<String, dynamic>>();
       for (final device in deviceList) {
         if (id == device['id']) {
           device['message'] = message;
@@ -163,7 +168,7 @@ class DeviceController extends GetxController {
     int aktif = 0;
     for (final room in devices) {
       final deviceList =
-          room['device'] as List<Map<String, dynamic>>;
+          (room['device'] as List).cast<Map<String, dynamic>>();
       for (final item in deviceList) {
         if (item['active'] == true) {
           aktif++;

@@ -41,6 +41,9 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
   @override
   void dispose() {
     _bannerTimer?.cancel();
+    try {
+      _controller.loadRequest(Uri.parse('about:blank'));
+    } catch (_) {}
     super.dispose();
   }
 
@@ -141,7 +144,7 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
       debugPrint('DEBUG_LOG: USB drive detected at: $usbPath');
 
       final uri = Uri.parse(url);
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         String filename = 'ip-call-export.xlsx';

@@ -9,6 +9,8 @@ import '../services/audio_service.dart';
 import 'home_controller.dart';
 import 'message_controller.dart';
 import 'device_controller.dart';
+import 'call_controller.dart';
+import 'contact_controller.dart';
 
 class SettingsController extends GetxController {
   late final TextEditingController adminPasswordCtrl;
@@ -151,8 +153,15 @@ class SettingsController extends GetxController {
       sip.unregister();
       await sip.register();
 
+      // Re-bind callbacks
+      Get.find<CallController>().bindSipCallbacks();
+
       final audio = Get.find<AudioService>();
       await audio.init();
+
+      // Reload controllers data
+      await Get.find<DeviceController>().loadDevices();
+      await Get.find<ContactController>().loadContacts();
 
       Get.snackbar('Berhasil', 'Settings disimpan dan service terhubung ulang',
           snackPosition: SnackPosition.bottom);
@@ -198,9 +207,18 @@ class SettingsController extends GetxController {
       // Clear local memory message queue
       try {
         final msgCtrl = Get.find<MessageController>();
-        msgCtrl.messages.clear();
+        msgCtrl.clearAllMessages();
+
+        final callCtrl = Get.find<CallController>();
+        callCtrl.calls.clear();
+        callCtrl.callSeconds.clear();
+        callCtrl.onSession.value = false;
+        callCtrl.isAnswering.value = false;
+
         final storage = Get.find<StorageService>();
         storage.appState = '';
+        storage.appStateCalls = '';
+        storage.appStateMessages = '';
       } catch (_) {}
 
       // Clear MQTT retained topics by publishing empty strings to the relevant device/global topics

@@ -51,6 +51,12 @@ class StorageService extends GetxService {
   String? get appState => _box.read('app_state');
   set appState(String? v) => _box.write('app_state', v);
 
+  String? get appStateCalls => _box.read('app_state_calls');
+  set appStateCalls(String? v) => _box.write('app_state_calls', v);
+
+  String? get appStateMessages => _box.read('app_state_messages');
+  set appStateMessages(String? v) => _box.write('app_state_messages', v);
+
   // --- Theme & Appearance ---
   bool get isDarkMode => _box.read('is_dark_mode') ?? false;
   set isDarkMode(bool v) => _box.write('is_dark_mode', v);
