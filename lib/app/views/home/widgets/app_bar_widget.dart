@@ -7,6 +7,7 @@ import '../../../services/mqtt_service.dart';
 import '../../../services/sip_service.dart';
 import '../../settings/settings_view.dart';
 import 'clock_widget.dart';
+import 'admin_webview_dialog.dart';
 
 class NurseCallAppBar extends StatelessWidget {
   const NurseCallAppBar({super.key});
@@ -172,6 +173,17 @@ class NurseCallAppBar extends StatelessWidget {
                     : const Icon(Icons.refresh, color: Colors.white, size: 24),
                 tooltip: 'Refresh Koneksi',
               )),
+
+          const SizedBox(width: 8),
+
+          // Admin button
+          IconButton(
+            onPressed: () {
+              Get.dialog(const AdminWebViewDialog());
+            },
+            icon: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 24),
+            tooltip: 'Admin Panel',
+          ),
 
           const SizedBox(width: 8),
 
