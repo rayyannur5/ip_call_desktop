@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:flutter/material.dart';
 import 'package:webview_all/webview_all.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:flutter/services.dart';
 
 class AdminWebViewDialog extends StatefulWidget {
   const AdminWebViewDialog({super.key});
@@ -44,6 +46,19 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
     try {
       _controller.loadRequest(Uri.parse('about:blank'));
     } catch (_) {}
+    // Reset focus to root scope to regain keyboard focus from native webview
+    FocusManager.instance.rootScope.requestFocus();
+    
+    // Force OS window focus back to Flutter app after the native view is completely removed
+    Future.delayed(const Duration(milliseconds: 200), () async {
+      try {
+        await const MethodChannel('my_app/focus_helper').invokeMethod('grabFocus');
+        await windowManager.blur();
+        await windowManager.focus();
+      } catch (e) {
+        debugPrint('Error resetting window focus: $e');
+      }
+    });
     super.dispose();
   }
 
@@ -55,14 +70,18 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = true;
+              });
+            }
           },
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
           },
           onWebResourceError: (WebResourceError error) {
             debugPrint('WebView error: ${error.description}');

@@ -8,6 +8,8 @@ import '../../../services/sip_service.dart';
 import '../../settings/settings_view.dart';
 import 'clock_widget.dart';
 import 'admin_webview_dialog.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:flutter/services.dart';
 
 class NurseCallAppBar extends StatelessWidget {
   const NurseCallAppBar({super.key});
@@ -178,8 +180,22 @@ class NurseCallAppBar extends StatelessWidget {
 
           // Admin button
           IconButton(
-            onPressed: () {
-              Get.dialog(const AdminWebViewDialog());
+            onPressed: () async {
+              await Get.dialog(const AdminWebViewDialog());
+              // After dialog is closed, wait for platform view to be completely destroyed,
+              // then reset window focus to reclaim input.
+              Future.delayed(const Duration(milliseconds: 300), () async {
+                try {
+                  // Reclaim GTK focus to FlView
+                  await const MethodChannel('my_app/focus_helper').invokeMethod('grabFocus');
+                  
+                  await windowManager.blur();
+                  await windowManager.focus();
+                  FocusManager.instance.rootScope.requestFocus();
+                } catch (e) {
+                  debugPrint('Refocus error: $e');
+                }
+              });
             },
             icon: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 24),
             tooltip: 'Admin Panel',

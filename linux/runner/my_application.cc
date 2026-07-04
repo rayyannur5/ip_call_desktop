@@ -19,6 +19,22 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Method channel handler to grab focus back to Flutter FlView GTK widget.
+static void focus_helper_channel_method_call_cb(FlMethodChannel* channel,
+                                                FlMethodCall* method_call,
+                                                gpointer user_data) {
+  FlView* view = FL_VIEW(user_data);
+  const gchar* method = fl_method_call_get_name(method_call);
+
+  if (strcmp(method, "grabFocus") == 0) {
+    gtk_widget_grab_focus(GTK_WIDGET(view));
+    g_autoptr(FlValue) result = fl_value_new_bool(true);
+    fl_method_call_respond_success(method_call, result, nullptr);
+  } else {
+    fl_method_call_respond_not_implemented(method_call, nullptr);
+  }
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
@@ -78,6 +94,19 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_realize(GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+
+  // Register focus helper channel to let Dart regain focus on FlView GTK widget.
+  FlBinaryMessenger* messenger = fl_engine_get_binary_messenger(fl_view_get_engine(view));
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  FlMethodChannel* focus_channel = fl_method_channel_new(
+      messenger,
+      "my_app/focus_helper",
+      FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(
+      focus_channel,
+      focus_helper_channel_method_call_cb,
+      view,
+      g_object_unref);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
