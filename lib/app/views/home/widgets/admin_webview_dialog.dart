@@ -106,9 +106,12 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
     return lowerUrl.endsWith('.xlsx') ||
         lowerUrl.endsWith('.xls') ||
         lowerUrl.endsWith('.csv') ||
+        lowerUrl.endsWith('.pdf') ||
+        lowerUrl.endsWith('.zip') ||
         lowerUrl.contains('download') ||
         lowerUrl.contains('export') ||
-        lowerUrl.contains('excel');
+        lowerUrl.contains('excel') ||
+        lowerUrl.contains('backup-restore/run');
   }
 
   Future<String?> _findUsbDrivePath() async {
@@ -157,6 +160,22 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
           color: Colors.orange.withOpacity(0.9),
           icon: Icons.warning,
         );
+        try {
+          _controller.runJavaScript('''
+            if (typeof Swal !== "undefined") {
+              Swal.fire({
+                icon: "warning",
+                title: "Flashdisk Tidak Ditemukan",
+                text: "Silakan pasang Flashdisk (USB Drive) terlebih dahulu.",
+                confirmButtonText: "OK"
+              });
+            } else {
+              alert("Silakan pasang Flashdisk (USB Drive) terlebih dahulu.");
+            }
+          ''');
+        } catch (jsErr) {
+          debugPrint('Error executing JS USB warning: $jsErr');
+        }
         return;
       }
 
@@ -178,6 +197,16 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
           final lastSegment = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
           if (lastSegment.isNotEmpty && lastSegment.contains('.')) {
             filename = lastSegment;
+          } else {
+            final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+            final lowerUrl = url.toLowerCase();
+            if (contentType.contains('pdf') || lowerUrl.contains('pdf')) {
+              filename = 'ip-call-export.pdf';
+            } else if (contentType.contains('zip') || lowerUrl.contains('zip')) {
+              filename = 'ip-call-export.zip';
+            } else if (contentType.contains('csv') || lowerUrl.contains('csv')) {
+              filename = 'ip-call-export.csv';
+            }
           }
         }
 
@@ -192,6 +221,24 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
           color: Colors.green.withOpacity(0.9),
           icon: Icons.check_circle,
         );
+
+        try {
+          _controller.runJavaScript('''
+            if (typeof Swal !== "undefined") {
+              Swal.fire({
+                icon: "success",
+                title: "Download Berhasil",
+                text: "File backup/ekspor telah disimpan di Flashdisk: $filename",
+                timer: 4000,
+                showConfirmButton: false
+              });
+            } else {
+              alert("Download Berhasil! File disimpan di Flashdisk: $filename");
+            }
+          ''');
+        } catch (jsErr) {
+          debugPrint('Error executing JS success alert: $jsErr');
+        }
       } else {
         debugPrint('DEBUG_LOG: Failed HTTP response: ${response.statusCode}');
         _showBanner(
@@ -199,6 +246,24 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
           color: Colors.red.withOpacity(0.9),
           icon: Icons.error,
         );
+
+        try {
+          _controller.runJavaScript('''
+            if (typeof Swal !== "undefined") {
+              Swal.fire({
+                icon: "error",
+                title: "Download Gagal",
+                text: "Server mengembalikan status ${response.statusCode}",
+                timer: 4000,
+                showConfirmButton: false
+              });
+            } else {
+              alert("Download Gagal: Server mengembalikan status ${response.statusCode}");
+            }
+          ''');
+        } catch (jsErr) {
+          debugPrint('Error executing JS failure alert: $jsErr');
+        }
       }
     } catch (e) {
       debugPrint('DEBUG_LOG: Error downloading: $e');
@@ -207,6 +272,24 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
         color: Colors.red.withOpacity(0.9),
         icon: Icons.error,
       );
+
+      try {
+        _controller.runJavaScript('''
+          if (typeof Swal !== "undefined") {
+            Swal.fire({
+              icon: "error",
+              title: "Download Error",
+              text: "Gagal mengunduh file: ${e.toString().replaceAll("'", "\\'")}",
+              timer: 4000,
+              showConfirmButton: false
+            });
+          } else {
+            alert("Download Error: Gagal mengunduh file: ${e.toString().replaceAll("'", "\\'")}");
+          }
+        ''');
+      } catch (jsErr) {
+        debugPrint('Error executing JS exception alert: $jsErr');
+      }
     } finally {
       if (mounted) {
         setState(() {
