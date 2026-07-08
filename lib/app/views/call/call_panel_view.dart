@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/call_controller.dart';
 import '../../controllers/home_controller.dart';
+import '../../services/app_logger.dart';
+
+const _tag = 'CallPanelView';
 
 /// Port of Telpon.jsx — 3 states: ringing, on session, queue
 class CallPanelView extends GetView<CallController> {
@@ -148,7 +151,7 @@ class CallPanelView extends GetView<CallController> {
               }
 
               final showAnswerButton = currentSeconds < (timeoutLimitSec - 10);
-              print('DEBUG_LOG_UI: index=$index, currentSeconds=$currentSeconds, timeoutLimitSec=$timeoutLimitSec, showAnswerButton=$showAnswerButton');
+              logger.d(_tag, 'index=$index, currentSeconds=$currentSeconds, timeoutLimitSec=$timeoutLimitSec, showAnswerButton=$showAnswerButton');
 
               if (!showAnswerButton) return const SizedBox.shrink();
 

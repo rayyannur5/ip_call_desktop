@@ -1,7 +1,10 @@
 import 'package:get/get.dart';
 import 'package:mysql_client/mysql_client.dart';
+import 'app_logger.dart';
 import 'storage_service.dart';
 import 'dart:async';
+
+const _tag = 'DatabaseService';
 
 class DatabaseService extends GetxService {
   MySQLConnection? _conn;
@@ -119,16 +122,16 @@ class DatabaseService extends GetxService {
       return await queryBlock();
     } catch (e) {
       if (e is TypeError || e.toString().contains('is not a subtype of type')) {
-        print('Database query programming error: $e');
+        logger.e(_tag, 'Query programming error', e);
         rethrow;
       }
 
-      print('Database query failed: $e. Reconnecting...');
+      logger.w(_tag, 'Query failed, reconnecting', e);
       try {
         await connect();
         return await queryBlock();
-      } catch (retryException) {
-        print('Database retry failed: $retryException');
+      } catch (retryException, st) {
+        logger.e(_tag, 'Retry after reconnect failed', retryException, st);
         rethrow;
       }
     }

@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:get/get.dart';
+import '../app_logger.dart';
+
+const _tag = 'LinuxWifiService';
 
 /// WiFi management via nmcli — Linux only
 class LinuxWifiService extends GetxService {
@@ -30,8 +33,8 @@ class LinuxWifiService extends GetxService {
       }
 
       return networks;
-    } catch (e) {
-      print('WiFi scan error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Scan error', e, st);
       return [];
     }
   }
@@ -46,8 +49,8 @@ class LinuxWifiService extends GetxService {
         ['device', 'wifi', 'connect', ssid, 'password', password],
       );
       return result.exitCode == 0;
-    } catch (e) {
-      print('WiFi connect error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Connect error', e, st);
       return false;
     }
   }
@@ -83,8 +86,8 @@ class LinuxWifiService extends GetxService {
         ['connection', 'down', connectionName],
       );
       return result.exitCode == 0;
-    } catch (e) {
-      print('WiFi disconnect error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Disconnect error', e, st);
       return false;
     }
   }

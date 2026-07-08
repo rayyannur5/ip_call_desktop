@@ -6,11 +6,14 @@ import '../services/database_service.dart';
 import '../services/mqtt_service.dart';
 import '../services/sip_service.dart';
 import '../services/audio_service.dart';
+import '../services/app_logger.dart';
 import 'home_controller.dart';
 import 'message_controller.dart';
 import 'device_controller.dart';
 import 'call_controller.dart';
 import 'contact_controller.dart';
+
+const _tag = 'SettingsController';
 
 class SettingsController extends GetxController {
   late final TextEditingController adminPasswordCtrl;
@@ -29,8 +32,8 @@ class SettingsController extends GetxController {
       }
       
       return result.exitCode == 0;
-    } catch (e) {
-      print('Set system date error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Set system date error', e, st);
       return false;
     }
   }
@@ -44,8 +47,8 @@ class SettingsController extends GetxController {
         result = await Process.run('sudo', ['date', '+%Y%m%d', '-s', dateStr]);
       }
       return result.exitCode == 0;
-    } catch (e) {
-      print('Set system date only error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Set system date only error', e, st);
       return false;
     }
   }
@@ -59,8 +62,8 @@ class SettingsController extends GetxController {
         result = await Process.run('sudo', ['date', '+%T', '-s', timeStr]);
       }
       return result.exitCode == 0;
-    } catch (e) {
-      print('Set system time only error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Set system time only error', e, st);
       return false;
     }
   }

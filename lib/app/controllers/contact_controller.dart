@@ -4,7 +4,10 @@ import 'package:audioplayers/audioplayers.dart';
 import '../services/database_service.dart';
 import '../services/mqtt_service.dart';
 import '../services/storage_service.dart';
+import '../services/app_logger.dart';
 import 'home_controller.dart';
+
+const _tag = 'ContactController';
 
 /// Port of Kontak.jsx + KontakList.jsx
 class ContactController extends GetxController {
@@ -62,8 +65,8 @@ class ContactController extends GetxController {
 
       // Load history
       loadHistory(currentDate.value);
-    } catch (e) {
-      print('ContactController load error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Load error', e, st);
       isLoadingBeds.value = false;
     }
   }
@@ -80,7 +83,7 @@ class ContactController extends GetxController {
             _deviceTimers[item['id']] = Timer(
               Duration(milliseconds: _intervalUpdateStatus),
               () {
-                print('timeout di kontak ${item['id']}');
+                logger.d(_tag, 'Device timeout: ${item['id']}');
                 item['active'] = false;
                 _deviceTimers.remove(item['id']);
                 devices2w.refresh();
@@ -171,8 +174,8 @@ class ContactController extends GetxController {
     try {
       final db = Get.find<DatabaseService>();
       histories.value = await db.getHistoryByDate(date);
-    } catch (e) {
-      print('Load history error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Load history error', e, st);
     }
     isLoadingHistory.value = false;
   }

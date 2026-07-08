@@ -24,16 +24,25 @@ class LinuxVolumeController extends GetxController {
     final service = Get.find<LinuxVolumeService>();
     final cards = await service.getSoundCards();
     soundCards.value = cards;
+    for (final card in cards) {
+      if (card['isDefault'] == true) {
+        selectedCardIndex.value = card['index'] as int;
+        break;
+      }
+    }
   }
 
   Future<void> changeSoundCard(int index) async {
+    final service = Get.find<LinuxVolumeService>();
     final storage = Get.find<StorageService>();
+    await service.setDefaultOutput(index);
     storage.soundCardIndex = index;
     selectedCardIndex.value = index;
     await refreshVolumes();
   }
 
   Future<void> refreshVolumes() async {
+    await loadSoundCards();
     final service = Get.find<LinuxVolumeService>();
     final master = await service.getMasterVolume();
     masterVolume.value = master['volume'] as int;

@@ -5,6 +5,9 @@ import 'package:audioplayers/audioplayers.dart';
 import '../../../controllers/contact_controller.dart';
 import '../../../controllers/call_controller.dart';
 import '../../../services/storage_service.dart';
+import '../../../services/app_logger.dart';
+
+const _tag = 'HistoryListWidget';
 
 /// Port of ListLogTelepon in Kontak.jsx
 class HistoryListWidget extends GetView<ContactController> {
@@ -367,8 +370,8 @@ class _AudioPlayerDialogState extends State<AudioPlayerDialog> {
                     } else {
                       await _player.seek(target);
                     }
-                  } catch (e) {
-                    print('Seek error: $e');
+                  } catch (e, st) {
+                    logger.e(_tag, 'Seek error', e, st);
                   }
                   setState(() {
                     _isDragging = false;

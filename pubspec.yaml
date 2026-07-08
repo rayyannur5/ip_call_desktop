@@ -37,6 +37,9 @@ dependencies:
   window_manager: ^0.5.1
   webview_all: ^1.1.2
 
+  # Logging (file output + size/count-based rotation)
+  logger: ^2.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

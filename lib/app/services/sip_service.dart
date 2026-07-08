@@ -1,6 +1,9 @@
 import 'package:get/get.dart';
 import 'package:sip_ua/sip_ua.dart';
+import 'app_logger.dart';
 import 'storage_service.dart';
+
+const _tag = 'SipService';
 
 class SipService extends GetxService implements SipUaHelperListener {
   SIPUAHelper? _helper;
@@ -38,8 +41,8 @@ class SipService extends GetxService implements SipUaHelperListener {
 
     try {
       _helper!.start(settings);
-    } catch (e) {
-      print('SIP Register Error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Register error', e, st);
     }
   }
 
@@ -49,8 +52,8 @@ class SipService extends GetxService implements SipUaHelperListener {
     final target = 'sip:$number@${storage.sipDomain}';
     try {
       await _helper!.call(target, voiceOnly: true);
-    } catch (e) {
-      print('SIP Make Call Error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Make call error', e, st);
     }
   }
 
@@ -64,8 +67,8 @@ class SipService extends GetxService implements SipUaHelperListener {
     if (_activeCall != null) {
       try {
         _activeCall!.hangup();
-      } catch (e) {
-        print('SIP Hangup Error: $e');
+      } catch (e, st) {
+        logger.e(_tag, 'Hangup error', e, st);
       }
       _activeCall = null;
     }
@@ -85,14 +88,14 @@ class SipService extends GetxService implements SipUaHelperListener {
   @override
   void registrationStateChanged(RegistrationState state) {
     isRegistered.value = state.state == RegistrationStateEnum.REGISTERED;
-    print('SIP Registration: ${state.state}');
+    logger.i(_tag, 'Registration state: ${state.state}');
   }
 
   @override
   void callStateChanged(Call call, CallState state) {
     _activeCall = call;
     callState.value = state.state;
-    print('SIP Call State: ${state.state}');
+    logger.i(_tag, 'Call state: ${state.state}');
 
     switch (state.state) {
       case CallStateEnum.CONFIRMED:
@@ -115,7 +118,7 @@ class SipService extends GetxService implements SipUaHelperListener {
 
   @override
   void transportStateChanged(TransportState state) {
-    print('SIP Transport: ${state.state}');
+    logger.i(_tag, 'Transport state: ${state.state}');
     if (state.state == TransportStateEnum.DISCONNECTED) {
       Future.delayed(const Duration(seconds: 5), () {
         if (_helper != null && !isRegistered.value) {

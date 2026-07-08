@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+import 'app_logger.dart';
 import 'storage_service.dart';
+
+const _tag = 'MqttService';
 
 class MqttService extends GetxService {
   MqttServerClient? _client;
@@ -49,8 +52,8 @@ class MqttService extends GetxService {
 
     try {
       await _client!.connect();
-    } catch (e) {
-      print('MQTT Connection Error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Connection error', e, st);
       _client?.disconnect();
       return;
     }
@@ -59,25 +62,25 @@ class MqttService extends GetxService {
       isConnected.value = true;
       _updatesSubscription?.cancel();
       _updatesSubscription = _client!.updates?.listen(_onMessage, onError: (e) {
-        print('MQTT Updates stream error: $e');
+        logger.e(_tag, 'Updates stream error', e);
       });
     }
   }
 
   void _onConnected() {
-    print('MQTT CONNECTED');
+    logger.i(_tag, 'Connected');
     isConnected.value = true;
     _startPing();
   }
 
   void _onDisconnected() {
-    print('MQTT DISCONNECTED');
+    logger.w(_tag, 'Disconnected');
     isConnected.value = false;
     _stopPing();
   }
 
   void _onAutoReconnected() {
-    print('MQTT AUTO RECONNECTED');
+    logger.i(_tag, 'Auto-reconnected');
     isConnected.value = true;
     _startPing();
   }
@@ -97,7 +100,7 @@ class MqttService extends GetxService {
         _processingTopics.remove(key);
       });
 
-      print('$topic : $message');
+      logger.d(_tag, '$topic : $message');
 
       // Dispatch to all registered handlers
       for (final handler in List.from(_messageHandlers)) {
@@ -112,8 +115,8 @@ class MqttService extends GetxService {
     }
     try {
       _client?.subscribe(topic, qos);
-    } catch (e) {
-      print('MQTT subscribe error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Subscribe error ($topic)', e, st);
     }
   }
 
@@ -123,8 +126,8 @@ class MqttService extends GetxService {
     }
     try {
       _client?.unsubscribe(topic);
-    } catch (e) {
-      print('MQTT unsubscribe error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Unsubscribe error ($topic)', e, st);
     }
   }
 
@@ -137,8 +140,8 @@ class MqttService extends GetxService {
       final builder = MqttClientPayloadBuilder();
       builder.addString(message);
       _client!.publishMessage(topic, qos, builder.payload!, retain: retain);
-    } catch (e) {
-      print('MQTT publish error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Publish error ($topic)', e, st);
     }
   }
 

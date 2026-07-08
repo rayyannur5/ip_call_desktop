@@ -54,18 +54,16 @@ class LinuxVolumeView extends GetView<LinuxVolumeController> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
-                    value: selectedValue,
+                    value: cards.any((c) => c['index'] == selectedValue)
+                        ? selectedValue
+                        : null,
                     isExpanded: true,
                     items: [
-                      const DropdownMenuItem<int>(
-                        value: -1,
-                        child: Text('Default Sound Card'),
-                      ),
                       ...cards.map((card) {
                         return DropdownMenuItem<int>(
                           value: card['index'] as int,
                           child: Text(
-                            '[Card ${card['index']}] ${card['desc']}',
+                            card['desc'] as String,
                             overflow: TextOverflow.ellipsis,
                           ),
                         );

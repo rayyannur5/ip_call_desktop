@@ -6,10 +6,13 @@ import '../services/mqtt_service.dart';
 import '../services/sip_service.dart';
 import '../services/audio_service.dart';
 import '../services/storage_service.dart';
+import '../services/app_logger.dart';
 import 'call_controller.dart';
 import 'message_controller.dart';
 import 'device_controller.dart';
 import 'contact_controller.dart';
+
+const _tag = 'HomeController';
 
 class HomeController extends GetxController {
   final onDevices = false.obs;
@@ -63,8 +66,8 @@ class HomeController extends GetxController {
       timeoutCall = (utils['timeout_call'] ?? 60000).toInt();
       intervalUpdateStatus = (utils['interval_update_status'] ?? 10000).toInt();
       toiletPriority.value = (utils['toilet_priority'] ?? 0.0) == 1.0;
-    } catch (e) {
-      print('HomeController database init error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Database init error', e, st);
     }
 
     // 2. Connect MQTT
@@ -74,24 +77,24 @@ class HomeController extends GetxController {
 
       // Register MQTT handler for 'internal' heartbeat
       mqtt.addMessageHandler(_handleInternalHeartbeat);
-    } catch (e) {
-      print('HomeController MQTT init error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'MQTT init error', e, st);
     }
 
     // 3. Register SIP
     try {
       final sip = Get.find<SipService>();
       await sip.register();
-    } catch (e) {
-      print('HomeController SIP init error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'SIP init error', e, st);
     }
 
     // 4. Init audio
     try {
       final audio = Get.find<AudioService>();
       await audio.init();
-    } catch (e) {
-      print('HomeController audio init error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Audio init error', e, st);
     }
 
     if (!initCompleter.isCompleted) {

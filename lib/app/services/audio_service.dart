@@ -7,7 +7,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'mqtt_service.dart';
 import 'database_service.dart';
+import 'app_logger.dart';
 import 'storage_service.dart';
+
+const _tag = 'AudioService';
 
 /// Port of speak.js — 100% same logic
 class AudioService extends GetxService {
@@ -100,8 +103,8 @@ class AudioService extends GetxService {
             if (response.statusCode == 200) {
               await localFile.writeAsBytes(response.bodyBytes);
             }
-          } catch (e) {
-            print('Failed to download sound $name: $e');
+          } catch (e, st) {
+            logger.e(_tag, 'Failed to download sound $name', e, st);
           }
         }
 
@@ -109,8 +112,8 @@ class AudioService extends GetxService {
           _soundPaths[name] = localPath;
         }
       }
-    } catch (e) {
-      print('Failed to load dynamic sounds: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Failed to load dynamic sounds', e, st);
     }
   }
 
@@ -143,14 +146,14 @@ class AudioService extends GetxService {
         if (await file.exists()) {
           await _speakPlayer.play(DeviceFileSource(path));
         } else {
-          print('Sound file does not exist: $path');
+          logger.w(_tag, 'Sound file does not exist: $path');
           onComplete();
         }
       } else {
         await _speakPlayer.play(AssetSource(path));
       }
-    } catch (e) {
-      print('Play sound failed: $e, recreating AudioPlayer...');
+    } catch (e, st) {
+      logger.e(_tag, 'Play sound failed, recreating AudioPlayer', e, st);
       _recreateSpeakPlayer();
       onComplete();
     }
@@ -197,7 +200,7 @@ class AudioService extends GetxService {
   /// Port of speak() in speak.js — exact same logic
   Future<void> speak(String str, String msg, String username) async {
     if (_isSpeaking) {
-      print('AudioService is already speaking, skipping.');
+      logger.d(_tag, 'Already speaking, skipping.');
       return;
     }
     _isSpeaking = true;
@@ -227,7 +230,7 @@ class AudioService extends GetxService {
       mqtt.publish('dotmatrix', fixDotStr);
 
       final strArray = str.toLowerCase().split(' ');
-      print('SPEAK : $strArray');
+      logger.d(_tag, 'Speak: $strArray');
 
       final lastIndex = strArray.length - 1;
       const wordGap = 100; // ms
@@ -257,8 +260,8 @@ class AudioService extends GetxService {
           await Future.delayed(const Duration(milliseconds: wordGap));
         }
       }
-    } catch (e) {
-      print('Speak error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Speak error', e, st);
     } finally {
       _isSpeaking = false;
     }
@@ -272,8 +275,8 @@ class AudioService extends GetxService {
     try {
       await _ringingPlayer.setReleaseMode(ReleaseMode.loop);
       await _ringingPlayer.play(AssetSource('sounds/ringing.ogg'));
-    } catch (e) {
-      print('Play ringing failed: $e, recreating AudioPlayer...');
+    } catch (e, st) {
+      logger.e(_tag, 'Play ringing failed, recreating AudioPlayer', e, st);
       _recreateRingingPlayer();
       try {
         await _ringingPlayer.setReleaseMode(ReleaseMode.loop);
@@ -292,8 +295,8 @@ class AudioService extends GetxService {
   Future<void> playRejected() async {
     try {
       await _rejectedPlayer.play(AssetSource('sounds/rejected.mp3'));
-    } catch (e) {
-      print('Play rejected failed: $e, recreating AudioPlayer...');
+    } catch (e, st) {
+      logger.e(_tag, 'Play rejected failed, recreating AudioPlayer', e, st);
       _recreateRejectedPlayer();
       try {
         await _rejectedPlayer.play(AssetSource('sounds/rejected.mp3'));

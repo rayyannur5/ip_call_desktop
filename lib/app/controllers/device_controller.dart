@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:get/get.dart';
 import '../services/mqtt_service.dart';
 import '../services/database_service.dart';
+import '../services/app_logger.dart';
 import 'home_controller.dart';
+
+const _tag = 'DeviceController';
 
 /// Port of Devices.jsx + CountDeviceOff.jsx
 class DeviceController extends GetxController {
@@ -52,8 +55,8 @@ class DeviceController extends GetxController {
       devices.value = grouped;
 
       _subscribeAll();
-    } catch (e) {
-      print('DeviceController load error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Load error', e, st);
     }
   }
 
@@ -126,7 +129,7 @@ class DeviceController extends GetxController {
             _deviceTimers[item['id']] = Timer(
               Duration(milliseconds: _intervalUpdateStatus),
               () {
-                print('timeout ${item['id']}');
+                logger.d(_tag, 'Device timeout: ${item['id']}');
                 item['active'] = false;
                 _deviceTimers.remove(item['id']);
                 devices.refresh();

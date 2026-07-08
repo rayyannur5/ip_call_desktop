@@ -5,8 +5,11 @@ import '../services/mqtt_service.dart';
 import '../services/audio_service.dart';
 import '../services/database_service.dart';
 import '../services/storage_service.dart';
+import '../services/app_logger.dart';
 import 'home_controller.dart';
 import 'call_controller.dart';
+
+const _tag = 'MessageController';
 
 /// Port of message logic from App.jsx (line 323-453)
 class MessageController extends GetxController {
@@ -120,8 +123,8 @@ class MessageController extends GetxController {
         if (mode == '2') msgCode = 'b';
         addMessage(topic, msgCode, '');
       }
-    } catch (e) {
-      print('Handle bed message error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Handle bed message error', e, st);
     }
   }
 
@@ -131,7 +134,7 @@ class MessageController extends GetxController {
     bool exist = messages.any((msg) => msg['topic'] == topic);
     if (exist) return;
 
-    print('ADD MESSAGE : $topic : $message : $name');
+    logger.d(_tag, 'Add message: $topic : $message : $name');
 
     String resolvedName = name;
     if (name.isEmpty) {
@@ -150,8 +153,8 @@ class MessageController extends GetxController {
           final bed = await db.getBedById(id);
           resolvedName = bed?['username'] ?? '';
         }
-      } catch (e) {
-        print('Resolve name error: $e');
+      } catch (e, st) {
+        logger.e(_tag, 'Resolve name error', e, st);
       }
     }
 
@@ -286,8 +289,8 @@ class MessageController extends GetxController {
           messages[_indexInterval]['username'],
         );
       }
-    } catch (e) {
-      print('doSpeak error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'doSpeak error', e, st);
       _indexInterval = 0;
       _counterIndexInterval = 0;
     }

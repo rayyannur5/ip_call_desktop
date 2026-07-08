@@ -1,7 +1,10 @@
 import 'package:get/get.dart';
 import '../services/database_service.dart';
+import '../services/app_logger.dart';
 
 import '../controllers/home_controller.dart';
+
+const _tag = 'LogController';
 
 /// Port of Log.jsx
 class LogController extends GetxController {
@@ -27,8 +30,8 @@ class LogController extends GetxController {
     try {
       final db = Get.find<DatabaseService>();
       logs.value = await db.getLogsByDate(currentDate.value);
-    } catch (e) {
-      print('Load logs error: $e');
+    } catch (e, st) {
+      logger.e(_tag, 'Load logs error', e, st);
     }
     isLoading.value = false;
   }
