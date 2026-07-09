@@ -98,7 +98,7 @@ class AudioService extends GetxService {
         // Download if not cached
         if (!await localFile.exists()) {
           try {
-            final url = 'http://${storage.serverHost}/ip-call/$source';
+            final url = 'http://${storage.serverHost}/$source';
             final response = await http.get(Uri.parse(url));
             if (response.statusCode == 200) {
               await localFile.writeAsBytes(response.bodyBytes);

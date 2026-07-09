@@ -312,6 +312,57 @@ class LinuxVolumeService extends GetxService {
     }
   }
 
+  /// Set Master (output) mute to an absolute state (used by the sync
+  /// reconciler, where toggling on a stale read could flip the wrong way).
+  Future<void> setMasterMute(bool muted) async {
+    if (!Platform.isLinux) return;
+    final tool = await _detectTool();
+    final value = muted ? '1' : '0';
+    try {
+      switch (tool) {
+        case _AudioTool.pactl:
+          await Process.run(
+              'pactl', ['set-sink-mute', '@DEFAULT_SINK@', value]);
+          break;
+        case _AudioTool.wpctl:
+          await Process.run(
+              'wpctl', ['set-mute', '@DEFAULT_AUDIO_SINK@', value]);
+          break;
+        case _AudioTool.amixer:
+          await Process.run('amixer',
+              _buildAmixerArgs(['set', 'Master', muted ? 'mute' : 'unmute']));
+          break;
+      }
+    } catch (e, st) {
+      logger.e(_tag, 'Set master mute error', e, st);
+    }
+  }
+
+  /// Set Capture (input) mute to an absolute state.
+  Future<void> setCaptureMute(bool muted) async {
+    if (!Platform.isLinux) return;
+    final tool = await _detectTool();
+    final value = muted ? '1' : '0';
+    try {
+      switch (tool) {
+        case _AudioTool.pactl:
+          await Process.run(
+              'pactl', ['set-source-mute', '@DEFAULT_SOURCE@', value]);
+          break;
+        case _AudioTool.wpctl:
+          await Process.run(
+              'wpctl', ['set-mute', '@DEFAULT_AUDIO_SOURCE@', value]);
+          break;
+        case _AudioTool.amixer:
+          await Process.run('amixer',
+              _buildAmixerArgs(['set', 'Capture', muted ? 'mute' : 'unmute']));
+          break;
+      }
+    } catch (e, st) {
+      logger.e(_tag, 'Set capture mute error', e, st);
+    }
+  }
+
   Future<Map<String, dynamic>> _getPactlVolume(String kind) async {
     final target = '@DEFAULT_${kind.toUpperCase()}@';
     final volResult =

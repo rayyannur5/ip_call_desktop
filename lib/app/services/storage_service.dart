@@ -78,5 +78,21 @@ class StorageService extends GetxService {
   int get soundCardIndex => _box.read('sound_card_index') ?? -1;
   set soundCardIndex(int v) => _box.write('sound_card_index', v);
 
+  // --- Audio Sync State ---
+  bool get hasAudioState => _box.read('has_audio_state') ?? false;
+  set hasAudioState(bool v) => _box.write('has_audio_state', v);
+
+  int get masterVolume => _box.read('master_volume') ?? 100;
+  set masterVolume(int v) => _box.write('master_volume', v);
+
+  bool get isMasterMuted => _box.read('is_master_muted') ?? false;
+  set isMasterMuted(bool v) => _box.write('is_master_muted', v);
+
+  int get captureVolume => _box.read('capture_volume') ?? 100;
+  set captureVolume(int v) => _box.write('capture_volume', v);
+
+  bool get isCaptureMuted => _box.read('is_capture_muted') ?? false;
+  set isCaptureMuted(bool v) => _box.write('is_capture_muted', v);
+
   bool get isConfigured => serverHost.isNotEmpty;
 }

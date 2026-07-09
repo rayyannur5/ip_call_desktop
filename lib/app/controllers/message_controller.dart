@@ -110,17 +110,17 @@ class MessageController extends GetxController {
       final db = Get.find<DatabaseService>();
       final bed = await db.getBedById(id);
       if (bed == null) return;
-      final mode = bed['mode'];
+      final modeStr = bed['mode']?.toString();
 
       if (message == 'c' || message == 'x') {
-        if (mode == '2') {
+        if (modeStr == '2') {
           deleteMessage(topic, message, 'blue');
         } else {
           deleteMessage(topic, message, 'darurat');
         }
       } else if (message == 'e') {
         String msgCode = message;
-        if (mode == '2') msgCode = 'b';
+        if (modeStr == '2') msgCode = 'b';
         addMessage(topic, msgCode, '');
       }
     } catch (e, st) {

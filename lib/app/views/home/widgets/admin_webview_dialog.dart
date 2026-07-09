@@ -101,6 +101,24 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
       ..loadRequest(Uri.parse('http://localhost/ip-call/'));
   }
 
+  Future<void> _openInBrowser() async {
+    try {
+      final url = await _controller.currentUrl() ?? 'http://localhost/ip-call/';
+      if (Platform.isLinux) {
+        await Process.run('xdg-open', [url]);
+      } else if (Platform.isWindows) {
+        await Process.run('cmd', ['/c', 'start', '', url]);
+      }
+    } catch (e) {
+      debugPrint('Error opening browser: $e');
+      _showBanner(
+        'Gagal membuka browser: $e',
+        color: Colors.red.withOpacity(0.9),
+        icon: Icons.error,
+      );
+    }
+  }
+
   bool _isDownloadUrl(String url) {
     final lowerUrl = url.toLowerCase();
     return lowerUrl.endsWith('.xlsx') ||
@@ -356,6 +374,12 @@ class _AdminWebViewDialogState extends State<AdminWebViewDialog> {
                           icon: const Icon(Icons.refresh),
                           onPressed: () => _controller.reload(),
                           tooltip: 'Refresh Halaman',
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.open_in_browser),
+                          onPressed: _openInBrowser,
+                          tooltip: 'Buka di Browser',
                         ),
                         const SizedBox(width: 8),
                         IconButton(
