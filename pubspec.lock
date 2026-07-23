@@ -697,42 +697,41 @@ packages:
     dependency: "direct main"
     description:
       name: webview_all
-      sha256: "95dc3b551d29ecb98b4a63fa7e1c14bcfa6cac1d5b278d0ae0ad7247adaa455c"
+      sha256: "618828779774dfc4cf726bbdcb323dd4b2482b81e7df2cb4218c5bb916369019"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "1.2.1"
   webview_all_linux:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: webview_all_linux
-      sha256: "78e75b6ebd9e9cd4d52a74516c1cb5ffe0090d02c826ce7197529ea463265bac"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.2"
+      path: "third_party/webview_all_linux"
+      relative: true
+    source: path
+    version: "1.2.1"
   webview_all_ohos:
     dependency: transitive
     description:
       name: webview_all_ohos
-      sha256: "501a0928f615dd14bbda6ab4cece86b88f4dca35cfff7f3e7cc3366d0ad36ae1"
+      sha256: a5601f843d7d6fffc41ffe6946d435220496c755a72f1a4014cdbd614991d444
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "1.2.1"
   webview_all_web:
     dependency: transitive
     description:
       name: webview_all_web
-      sha256: "43ee7bf45051f55da55ceacfccc79cbd3b76331165efc4d87fa2bb915a1df0a8"
+      sha256: fd5d2a3f35a76e5e8e8819a9c41cf243a8bd875b1b3814798946f512c9b258fe
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "1.2.1"
   webview_all_windows:
     dependency: transitive
     description:
       name: webview_all_windows
-      sha256: "2d3a4d497f9a6f6e21bb330316847b735013f57a37a146a296af6b78549579f5"
+      sha256: "95e7b0abdd893d4c2b186b21a2fb8a383a909044a10190e9d94b199cb0a6a46c"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.2"
+    version: "1.2.1"
   webview_flutter_android:
     dependency: transitive
     description:

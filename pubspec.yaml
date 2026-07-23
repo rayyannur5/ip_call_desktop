@@ -35,7 +35,7 @@ dependencies:
   path_provider: ^2.1.0
   path: ^1.9.0
   window_manager: ^0.5.1
-  webview_all: ^1.1.2
+  webview_all: ^1.2.1
 
   # Logging (file output + size/count-based rotation)
   logger: ^2.7.0
@@ -44,6 +44,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+
+# Vendored fork of webview_all_linux 1.2.1 with an X11 input fix: the webview's
+# GdkWindow is promoted to a native X window so clicks land on the webview under
+# XFCE/LXQt (X11) instead of passing through to the window behind. See
+# third_party/webview_all_linux/linux/src/webview/linux_webview.cc.
+dependency_overrides:
+  webview_all_linux:
+    path: third_party/webview_all_linux
 
 flutter:
   uses-material-design: true
